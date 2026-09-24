@@ -9,47 +9,67 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="18dp"
+        android:padding="16dp"
         android:text="Pottery Wheel Detector"
         android:textColor="#2D241E"
         android:textSize="23sp"
         android:textStyle="bold" />
 
-    <FrameLayout
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="#1C1714">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp">
+        <Button android:id="@+id/liveButton" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1" android:text="Live camera" />
+        <Button android:id="@+id/pickButton" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1" android:text="Pick photo" />
+        <Button android:id="@+id/exportButton" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:enabled="false" android:text="Export OBJ" />
+    </LinearLayout>
 
-        <androidx.camera.view.PreviewView
-            android:id="@+id/preview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
+    <FrameLayout android:id="@+id/cameraPanel" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1" android:background="#1C1714">
+        <androidx.camera.view.PreviewView android:id="@+id/preview"
+            android:layout_width="match_parent" android:layout_height="match_parent"
             app:scaleType="fillCenter" />
-
-        <com.example.potterywheeldetector.DetectionOverlay
-            android:id="@+id/overlay"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+        <com.example.potterywheeldetector.DetectionOverlay android:id="@+id/overlay"
+            android:layout_width="match_parent" android:layout_height="match_parent" />
     </FrameLayout>
 
-    <TextView
-        android:id="@+id/status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:minHeight="56dp"
-        android:padding="16dp"
-        android:text="Starting camera…"
-        android:textColor="#2D241E"
-        android:textSize="16sp" />
+    <ScrollView android:id="@+id/galleryPanel" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true"
+        android:visibility="gone">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <com.example.potterywheeldetector.GalleryOutlineView android:id="@+id/galleryImage"
+                android:layout_width="match_parent" android:layout_height="300dp"
+                android:background="#29211D" />
+            <SeekBar android:id="@+id/sensitivity" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:paddingLeft="12dp"
+                android:paddingRight="12dp" android:max="100" android:progress="50" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:padding="12dp" android:textColor="#675A50"
+                android:text="Adjust outline sensitivity or tap near the vessel centre. Best results: one upright pot, straight-on view, plain background." />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingLeft="12dp" android:text="2D profile" android:textColor="#2D241E"
+                android:textSize="18sp" android:textStyle="bold" />
+            <com.example.potterywheeldetector.ProfileView android:id="@+id/profileView"
+                android:layout_width="match_parent" android:layout_height="230dp"
+                android:background="#E9DDD0" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingLeft="12dp" android:paddingTop="12dp"
+                android:text="3D vessel · drag to rotate" android:textColor="#2D241E"
+                android:textSize="18sp" android:textStyle="bold" />
+            <com.example.potterywheeldetector.Vessel3DView android:id="@+id/vessel3dView"
+                android:layout_width="match_parent" android:layout_height="320dp"
+                android:background="#1C1714" />
+        </LinearLayout>
+    </ScrollView>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
-        android:paddingBottom="18dp"
-        android:text="Point the camera at a vessel on the wheel. This starter tracks visible objects; it does not yet verify that an object is pottery."
-        android:textColor="#675A50"
-        android:textSize="13sp" />
+    <TextView android:id="@+id/status" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:minHeight="56dp" android:padding="14dp"
+        android:text="Starting camera…" android:textColor="#2D241E" android:textSize="14sp" />
 </LinearLayout>
