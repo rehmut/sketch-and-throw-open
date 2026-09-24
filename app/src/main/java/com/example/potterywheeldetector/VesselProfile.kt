@@ -54,8 +54,33 @@ object VesselProfileExtractor {
             .roundToInt().coerceIn(12, 125)
 
         val mask = BooleanArray(pixels.size) { distances[it] >= cutoff }
-        val visited = BooleanArray(pixels.size)
-        val queue = IntArray(pixels.size)
+        return extractFromMask(w, h, mask, focus, seed, mirrorMissingSide = true)
+    }
+
+    fun extractFromConfidence(
+        width: Int,
+        height: Int,
+        confidence: FloatArray,
+        focus: Rect? = null,
+        seed: PointF? = null,
+        sensitivity: Int = 50
+    ): VesselProfile? {
+        if (width < 32 || height < 32 || confidence.size != width * height) return null
+        val threshold = 0.8f - sensitivity.coerceIn(0, 100) * 0.006f
+        val mask = BooleanArray(confidence.size) { confidence[it] >= threshold }
+        return extractFromMask(width, height, mask, focus, seed, mirrorMissingSide = false)
+    }
+
+    private fun extractFromMask(
+        w: Int,
+        h: Int,
+        mask: BooleanArray,
+        focus: Rect?,
+        seed: PointF?,
+        mirrorMissingSide: Boolean
+    ): VesselProfile? {
+        val visited = BooleanArray(mask.size)
+        val queue = IntArray(mask.size)
         val seedIndex = seed?.let {
             val sx = it.x.roundToInt().coerceIn(0, w - 1)
             val sy = it.y.roundToInt().coerceIn(0, h - 1)
@@ -180,12 +205,12 @@ object VesselProfileExtractor {
             seed != null -> seed.x
             else -> w / 2f
         }
-        val symmetric = smoothed.map { row ->
+        val finalRows = if (mirrorMissingSide) smoothed.map { row ->
             val radius = max(abs(row.left - axis), abs(row.right - axis))
             ProfileRow(row.y, (axis - radius).coerceAtLeast(0f),
                 (axis + radius).coerceAtMost((w - 1).toFloat()))
-        }
-        val profile = VesselProfile(w, h, symmetric)
+        } else smoothed
+        val profile = VesselProfile(w, h, finalRows)
         return if (profile.width > w * 0.04f && profile.height > h * 0.12f) profile else null
     }
 

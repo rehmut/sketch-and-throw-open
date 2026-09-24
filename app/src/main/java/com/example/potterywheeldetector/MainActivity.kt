@@ -16,6 +16,7 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
+import android.widget.Switch
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.result.PickVisualMediaRequest
@@ -26,6 +27,13 @@ import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.framework.image.ByteBufferExtractor
+import com.google.mediapipe.tasks.components.containers.NormalizedKeypoint
+import com.google.mediapipe.tasks.core.BaseOptions
+import com.google.mediapipe.tasks.vision.interactivesegmenter.InteractiveSegmenter
+import com.google.mediapipe.tasks.vision.interactivesegmenter.InteractiveSegmenterOptions
+import com.google.mediapipe.tasks.vision.interactivesegmenter.Stroke
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.objects.ObjectDetection
 import com.google.mlkit.vision.objects.ObjectDetector
@@ -43,6 +51,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var vessel3dView: Vessel3DView
     private lateinit var exportButton: Button
     private lateinit var sensitivity: SeekBar
+    private lateinit var mlOutlineSwitch: Switch
     private val worker = Executors.newSingleThreadExecutor()
     private var controller: LifecycleCameraController? = null
     private var detector: ObjectDetector? = null
@@ -51,6 +60,12 @@ class MainActivity : ComponentActivity() {
     private var seed: PointF? = null
     private var mesh: VesselMesh? = null
     private var photoVersion = 0
+    private var extractionVersion = 0
+    private var mlConfidence: FloatArray? = null
+    private var mlModelState = ""
+    private var mlRequestVersion = -1
+    private var mlPoint: PointF? = null
+    private var interactiveSegmenter: InteractiveSegmenter? = null
 
     private val requestCamera = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -93,6 +108,7 @@ class MainActivity : ComponentActivity() {
         vessel3dView = findViewById(R.id.vessel3dView)
         exportButton = findViewById(R.id.exportButton)
         sensitivity = findViewById(R.id.sensitivity)
+        mlOutlineSwitch = findViewById(R.id.mlOutlineSwitch)
 
         findViewById<Button>(R.id.liveButton).setOnClickListener { showCamera() }
         findViewById<Button>(R.id.pickButton).setOnClickListener {
@@ -101,6 +117,9 @@ class MainActivity : ComponentActivity() {
         exportButton.setOnClickListener { saveObj.launch("pottery-vessel.obj") }
         galleryImage.onVesselTap = { point ->
             seed = point
+            if (mlOutlineSwitch.isChecked && photo != null) {
+                requestMlOutline(photo!!, photoVersion)
+            }
             runExtraction()
         }
         sensitivity.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -108,6 +127,12 @@ class MainActivity : ComponentActivity() {
             override fun onStartTrackingTouch(bar: SeekBar?) = Unit
             override fun onStopTrackingTouch(bar: SeekBar?) { runExtraction() }
         })
+        mlOutlineSwitch.setOnCheckedChangeListener { _, checked ->
+            if (checked && photo != null) {
+                requestMlOutline(photo!!, photoVersion)
+            }
+            runExtraction()
+        }
         showCamera()
     }
 
@@ -175,6 +200,7 @@ class MainActivity : ComponentActivity() {
 
     private fun loadPhoto(uri: Uri) {
         photoVersion++
+        extractionVersion++
         val version = photoVersion
         controller?.unbind()
         cameraPanel.visibility = View.GONE
@@ -183,6 +209,10 @@ class MainActivity : ComponentActivity() {
         photo = null
         focus = null
         seed = null
+        mlConfidence = null
+        mlModelState = ""
+        mlRequestVersion = -1
+        mlPoint = null
         mesh = null
         galleryImage.profile = null
         profileView.profile = null
@@ -232,29 +262,90 @@ class MainActivity : ComponentActivity() {
                     focus = objects.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
                         ?.boundingBox
                     runExtraction()
+                    if (mlOutlineSwitch.isChecked) requestMlOutline(bitmap, version)
                 }
             }
             .addOnFailureListener { error ->
                 if (version == photoVersion) {
                     status.text = "ML Kit could not locate an object; trying the photo outline."
                     runExtraction()
+                    if (mlOutlineSwitch.isChecked) requestMlOutline(bitmap, version)
                 }
             }
             .addOnCompleteListener { imageDetector.close() }
     }
 
+    private fun requestMlOutline(bitmap: Bitmap, version: Int) {
+        if (version != photoVersion) return
+        val point = seed ?: focus?.let {
+            PointF(it.centerX().toFloat(), it.centerY().toFloat())
+        } ?: PointF(bitmap.width / 2f, bitmap.height / 2f)
+        if (mlRequestVersion == version && mlPoint == point) return
+        mlRequestVersion = version
+        mlPoint = PointF(point.x, point.y)
+        mlConfidence = null
+        mlModelState = "Finding vessel edge with ML…"
+        status.text = mlModelState
+        worker.execute {
+            try {
+                val segmenter = interactiveSegmenter ?: InteractiveSegmenter.createFromOptions(
+                    this,
+                    InteractiveSegmenterOptions.builder().setBaseOptions(
+                        BaseOptions.builder().setModelAssetPath("interactive_segmentation.task").build()
+                    ).build()
+                ).also { interactiveSegmenter = it }
+                segmenter.setImage(BitmapImageBuilder(bitmap).build())
+                val stroke = Stroke.builder()
+                    .setBrushMode(Stroke.BrushMode.POSITIVE)
+                    .setPoints(listOf(NormalizedKeypoint.create(
+                        (point.x / bitmap.width).coerceIn(0f, 1f),
+                        (point.y / bitmap.height).coerceIn(0f, 1f)
+                    )))
+                    .setCompleted(true)
+                    .build()
+                val mask = segmenter.segment(listOf(stroke))
+                val values = FloatArray(mask.width * mask.height)
+                ByteBufferExtractor.extract(mask).asFloatBuffer().apply {
+                    rewind()
+                    get(values)
+                }
+                runOnUiThread {
+                    if (version != photoVersion || mlPoint != point || isDestroyed) return@runOnUiThread
+                    mlConfidence = values
+                    mlModelState = ""
+                    runExtraction()
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    if (version != photoVersion || mlPoint != point || isDestroyed) return@runOnUiThread
+                    mlRequestVersion = -1
+                    mlModelState = "ML outline failed: ${error.localizedMessage ?: "unknown error"}. Colour outline shown."
+                    runExtraction()
+                }
+            }
+        }
+    }
+
     private fun runExtraction() {
         val image = photo ?: return
-        val version = ++photoVersion
+        val photoId = photoVersion
+        val runId = ++extractionVersion
         val target = focus?.let(::Rect)
         val selectedPoint = seed?.let { PointF(it.x, it.y) }
         val level = sensitivity.progress
+        val confidence = if (mlOutlineSwitch.isChecked) mlConfidence else null
         status.text = "Tracing outline…"
         worker.execute {
-            val profile = VesselProfileExtractor.extract(image, target, selectedPoint, level)
+            val mlProfile = confidence?.let {
+                VesselProfileExtractor.extractFromConfidence(image.width, image.height,
+                    it, target, selectedPoint, level)
+            }
+            val profile = mlProfile ?: VesselProfileExtractor.extract(
+                image, target, selectedPoint, level)
             val newMesh = profile?.let(VesselMeshBuilder::build)
             runOnUiThread {
-                if (version != photoVersion || isDestroyed) return@runOnUiThread
+                if (photoId != photoVersion || runId != extractionVersion || isDestroyed)
+                    return@runOnUiThread
                 galleryImage.profile = profile
                 profileView.profile = profile
                 vessel3dView.mesh = newMesh
@@ -262,8 +353,12 @@ class MainActivity : ComponentActivity() {
                 exportButton.isEnabled = newMesh != null
                 status.text = if (profile == null) {
                     "No clear outline found. Try a plain background, tap the vessel, or adjust sensitivity."
+                } else if (mlProfile != null) {
+                    "ML vessel outline. Adjust sensitivity or tap inside the vessel if needed."
+                } else if (mlOutlineSwitch.isChecked && mlModelState.isNotEmpty()) {
+                    mlModelState
                 } else {
-                    "Outline traced. Drag the 3D vessel to rotate; export OBJ to save the mesh."
+                    "Colour outline. Drag the 3D vessel to rotate; export OBJ to save the mesh."
                 }
             }
         }
@@ -274,6 +369,7 @@ class MainActivity : ComponentActivity() {
         controller?.unbind()
         detector?.close()
         worker.shutdownNow()
+        interactiveSegmenter?.close()
         super.onDestroy()
     }
 }
