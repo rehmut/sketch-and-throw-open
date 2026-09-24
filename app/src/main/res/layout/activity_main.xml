@@ -12,9 +12,6 @@
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Centra" android:textColor="#243B30" android:textSize="29sp"
                 android:textStyle="bold" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="YOUR POTTERY STUDIO" android:textColor="#658174"
-                android:textSize="10sp" android:letterSpacing="0.16" />
         </LinearLayout>
         <Button android:id="@+id/libraryButton" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:text="Home" />
@@ -23,36 +20,16 @@
         android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical">
-            <FrameLayout android:layout_width="match_parent" android:layout_height="282dp"
-                android:background="#DFE5DE">
-                <ImageView android:id="@+id/heroImage" android:layout_width="match_parent"
-                    android:layout_height="match_parent" android:scaleType="centerCrop"
-                    android:contentDescription="Featured pottery photograph" />
-                <ImageButton android:id="@+id/heroNextButton" android:layout_width="48dp"
-                    android:layout_height="48dp" android:layout_gravity="right|center_vertical"
-                    android:layout_marginRight="16dp" android:background="@drawable/bg_next"
-                    android:src="@drawable/ic_next" android:contentDescription="Next pottery photo" />
-            </FrameLayout>
+            <ImageView android:id="@+id/heroImage" android:layout_width="match_parent"
+                android:layout_height="282dp" android:scaleType="centerCrop"
+                android:contentDescription="Light green ceramic bowl" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:paddingLeft="20dp" android:paddingRight="20dp"
-                android:paddingTop="16dp" android:paddingBottom="14dp">
-                <TextView android:id="@+id/heroCounterText" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:text="FORM STUDY 01 / 03"
-                    android:textColor="#6A8175" android:textSize="11sp" android:letterSpacing="0.14" />
-                <TextView android:id="@+id/heroTitleText" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:paddingTop="5dp"
-                    android:text="Pottery inspiration" android:textColor="#243B30"
-                    android:textSize="22sp" android:textStyle="bold" />
+                android:paddingTop="12dp" android:paddingBottom="12dp">
                 <TextView android:id="@+id/heroCreditText" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:paddingTop="6dp"
+                    android:layout_height="wrap_content"
                     android:text="Photo credit and license" android:textColor="#526D60"
                     android:textColorLink="#397B60" android:textSize="12sp" />
-            </LinearLayout>
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:gravity="center" android:orientation="horizontal" android:paddingBottom="14dp">
-                <TextView android:id="@+id/heroDotsText" android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:text="●  ○  ○"
-                    android:textColor="#397B60" android:textSize="17sp" />
             </LinearLayout>
             <View android:layout_width="match_parent" android:layout_height="1dp"
                 android:layout_marginLeft="20dp" android:layout_marginRight="20dp"
@@ -97,6 +74,20 @@
                     android:layout_height="wrap_content" android:text="New folder" />
             <LinearLayout android:id="@+id/libraryContent" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:orientation="vertical" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:paddingLeft="12dp" android:paddingRight="12dp"
+                android:paddingBottom="18dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="Pinterest references" android:textColor="#243B30"
+                    android:textSize="21sp" android:textStyle="bold" />
+                <Button android:id="@+id/addPinterestButton" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="Add pin or board link" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:paddingBottom="6dp" android:textColor="#526D60" android:textSize="12sp"
+                    android:text="Save links for inspiration. Use Pick photo to trace a vessel image." />
+                <LinearLayout android:id="@+id/pinterestContent" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:orientation="vertical" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

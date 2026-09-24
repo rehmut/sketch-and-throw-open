@@ -1,6 +1,7 @@
 package com.example.potterywheeldetector
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -10,8 +11,6 @@ import android.graphics.RectF
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.provider.MediaStore
 import android.text.Html
 import android.text.method.LinkMovementMethod
@@ -63,12 +62,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var galleryPanel: ScrollView
     private lateinit var viewerPanel: LinearLayout
     private lateinit var libraryContent: LinearLayout
+    private lateinit var pinterestContent: LinearLayout
     private lateinit var homeButton: Button
     private lateinit var heroImage: ImageView
-    private lateinit var heroTitleText: TextView
-    private lateinit var heroCounterText: TextView
     private lateinit var heroCreditText: TextView
-    private lateinit var heroDotsText: TextView
     private lateinit var galleryImage: GalleryOutlineView
     private lateinit var profileView: ProfileView
     private lateinit var vessel3dView: Vessel3DView
@@ -96,31 +93,8 @@ class MainActivity : ComponentActivity() {
     private var mlPoint: PointF? = null
     private var interactiveSegmenter: InteractiveSegmenter? = null
     private lateinit var vesselStore: VesselStore
+    private lateinit var pinterestStore: PinterestReferenceStore
     private var currentSavedId: String? = null
-    private data class HeroPhoto(
-        val image: Int, val title: String, val artist: String,
-        val source: String, val license: String, val licenseUrl: String
-    )
-    private val heroPhotos = listOf(
-        HeroPhoto(R.drawable.hero_bowl, "Quiet celadon bowl", "W.carter",
-            "https://commons.wikimedia.org/wiki/File:Light_green_ceramic_bowl_1.jpg",
-            "CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
-        HeroPhoto(R.drawable.hero_celadon, "Glaze and form", "Carol VanHook",
-            "https://commons.wikimedia.org/wiki/File:Vase_(Celadon_Pottery_with_a_beautiful_history)_(46493359835).jpg",
-            "CC BY-SA 2.0", "https://creativecommons.org/licenses/by-sa/2.0"),
-        HeroPhoto(R.drawable.hero_stoneware, "Blue stoneware vase", "W.carter",
-            "https://commons.wikimedia.org/wiki/File:Vas_nr_20,_glazed_stoneware_vase_by_Curt-M._Addin_2.jpg",
-            "CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0")
-    )
-    private var heroIndex = 0
-    private val heroHandler = Handler(Looper.getMainLooper())
-    private val heroAdvance = object : Runnable {
-        override fun run() {
-            if (libraryPanel.visibility == View.VISIBLE) showHeroPhoto((heroIndex + 1) % heroPhotos.size)
-            heroHandler.postDelayed(this, 8000)
-        }
-    }
-
     private val requestCamera = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -154,6 +128,7 @@ class MainActivity : ComponentActivity() {
         setContentView(R.layout.activity_main)
         preview = findViewById(R.id.preview)
         vesselStore = VesselStore(this)
+        pinterestStore = PinterestReferenceStore(this)
         overlay = findViewById(R.id.overlay)
         status = findViewById(R.id.status)
         cameraPanel = findViewById(R.id.cameraPanel)
@@ -161,12 +136,10 @@ class MainActivity : ComponentActivity() {
         galleryPanel = findViewById(R.id.galleryPanel)
         viewerPanel = findViewById(R.id.viewerPanel)
         libraryContent = findViewById(R.id.libraryContent)
+        pinterestContent = findViewById(R.id.pinterestContent)
         homeButton = findViewById(R.id.libraryButton)
         heroImage = findViewById(R.id.heroImage)
-        heroTitleText = findViewById(R.id.heroTitleText)
-        heroCounterText = findViewById(R.id.heroCounterText)
         heroCreditText = findViewById(R.id.heroCreditText)
-        heroDotsText = findViewById(R.id.heroDotsText)
         galleryImage = findViewById(R.id.galleryImage)
         profileView = findViewById(R.id.profileView)
         vessel3dView = findViewById(R.id.vessel3dView)
@@ -182,11 +155,9 @@ class MainActivity : ComponentActivity() {
 
         homeButton.setOnClickListener { showLibrary() }
         findViewById<Button>(R.id.newFolderButton).setOnClickListener { createFolderDialog() }
+        findViewById<Button>(R.id.addPinterestButton).setOnClickListener { addPinterestDialog("") }
         findViewById<View>(R.id.myVesselsButton).setOnClickListener {
             libraryPanel.smoothScrollTo(0, libraryContent.top)
-        }
-        findViewById<View>(R.id.heroNextButton).setOnClickListener {
-            showHeroPhoto((heroIndex + 1) % heroPhotos.size)
         }
         findViewById<View>(R.id.liveButton).setOnClickListener { showCamera() }
         findViewById<View>(R.id.pickButton).setOnClickListener {
@@ -231,36 +202,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
         })
-        showHeroPhoto(0)
+        showBowlPhoto()
         showLibrary()
+        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            val shared = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+            if (PinterestReferenceStore.pinterestUrl(shared) != null) addPinterestDialog(shared)
+        }
     }
 
-    private fun showHeroPhoto(index: Int) {
-        heroIndex = index
-        val item = heroPhotos[index]
-        heroImage.setImageResource(item.image)
-        heroImage.contentDescription = item.title
-        heroTitleText.text = item.title
-        heroCounterText.text = String.format(Locale.US, "FORM STUDY %02d / %02d",
-            index + 1, heroPhotos.size)
-        heroDotsText.text = heroPhotos.indices.joinToString("  ") { if (it == index) "●" else "○" }
+    private fun showBowlPhoto() {
+        heroImage.setImageResource(R.drawable.hero_bowl)
         heroCreditText.text = Html.fromHtml(
-            "Photo: <a href=\"${item.source}\">${item.artist}</a> · " +
-                "<a href=\"${item.licenseUrl}\">${item.license}</a> · display cropped",
+            "Photo: <a href=\"https://commons.wikimedia.org/wiki/File:Light_green_ceramic_bowl_1.jpg\">W.carter</a> · " +
+                "<a href=\"https://creativecommons.org/licenses/by-sa/4.0/\">CC BY-SA 4.0</a> · display cropped",
             Html.FROM_HTML_MODE_LEGACY
         )
         heroCreditText.movementMethod = LinkMovementMethod.getInstance()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        heroHandler.removeCallbacks(heroAdvance)
-        heroHandler.postDelayed(heroAdvance, 8000)
-    }
-
-    override fun onPause() {
-        heroHandler.removeCallbacks(heroAdvance)
-        super.onPause()
     }
 
     private fun showCamera() {
@@ -514,6 +471,7 @@ class MainActivity : ComponentActivity() {
         viewerPanel.visibility = View.GONE
         libraryPanel.visibility = View.VISIBLE
         renderLibrary()
+        renderPinterestReferences()
         status.text = "Choose a saved vessel or pick a new photo."
     }
 
@@ -599,6 +557,69 @@ class MainActivity : ComponentActivity() {
     }
 
     private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
+
+    private fun addPinterestDialog(sharedText: String) {
+        val fields = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16.dp, 8.dp, 16.dp, 0)
+        }
+        val urlInput = EditText(this).apply {
+            hint = "https://www.pinterest.com/pin/..."
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_VARIATION_URI
+            setSingleLine(true)
+            setText(PinterestReferenceStore.pinterestUrl(sharedText).orEmpty())
+        }
+        val nameInput = EditText(this).apply {
+            hint = "Name, e.g. Bowls to try"
+            setSingleLine(true)
+        }
+        fields.addView(urlInput)
+        fields.addView(nameInput)
+        AlertDialog.Builder(this).setTitle("Save Pinterest reference").setView(fields)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                try {
+                    pinterestStore.add(urlInput.text.toString(), nameInput.text.toString())
+                    renderPinterestReferences()
+                    status.text = "Pinterest reference saved."
+                } catch (error: Exception) {
+                    status.text = error.localizedMessage ?: "Could not save Pinterest link."
+                }
+            }.show()
+    }
+
+    private fun renderPinterestReferences() {
+        pinterestContent.removeAllViews()
+        for (reference in pinterestStore.all()) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            row.addView(Button(this).apply {
+                text = reference.name
+                isAllCaps = false
+                setOnClickListener {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(reference.url)))
+                    } catch (error: Exception) {
+                        status.text = "Could not open Pinterest link."
+                    }
+                }
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(Button(this).apply {
+                text = "Delete"
+                isAllCaps = false
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Remove ${reference.name}?")
+                        .setNegativeButton("Cancel", null)
+                        .setPositiveButton("Remove") { _, _ ->
+                            pinterestStore.delete(reference.id)
+                            renderPinterestReferences()
+                        }.show()
+                }
+            })
+            pinterestContent.addView(row)
+        }
+    }
 
     private fun createFolderDialog() {
         val input = EditText(this).apply { hint = "Folder name, e.g. Bowls" }
