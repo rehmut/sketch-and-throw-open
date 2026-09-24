@@ -10,7 +10,11 @@ import android.graphics.RectF
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
+import android.text.Html
+import android.text.method.LinkMovementMethod
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
@@ -59,6 +63,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var galleryPanel: ScrollView
     private lateinit var viewerPanel: LinearLayout
     private lateinit var libraryContent: LinearLayout
+    private lateinit var homeButton: Button
+    private lateinit var heroImage: ImageView
+    private lateinit var heroTitleText: TextView
+    private lateinit var heroCounterText: TextView
+    private lateinit var heroCreditText: TextView
+    private lateinit var heroDotsText: TextView
     private lateinit var galleryImage: GalleryOutlineView
     private lateinit var profileView: ProfileView
     private lateinit var vessel3dView: Vessel3DView
@@ -87,6 +97,29 @@ class MainActivity : ComponentActivity() {
     private var interactiveSegmenter: InteractiveSegmenter? = null
     private lateinit var vesselStore: VesselStore
     private var currentSavedId: String? = null
+    private data class HeroPhoto(
+        val image: Int, val title: String, val artist: String,
+        val source: String, val license: String, val licenseUrl: String
+    )
+    private val heroPhotos = listOf(
+        HeroPhoto(R.drawable.hero_bowl, "Quiet celadon bowl", "W.carter",
+            "https://commons.wikimedia.org/wiki/File:Light_green_ceramic_bowl_1.jpg",
+            "CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+        HeroPhoto(R.drawable.hero_celadon, "Glaze and form", "Carol VanHook",
+            "https://commons.wikimedia.org/wiki/File:Vase_(Celadon_Pottery_with_a_beautiful_history)_(46493359835).jpg",
+            "CC BY-SA 2.0", "https://creativecommons.org/licenses/by-sa/2.0"),
+        HeroPhoto(R.drawable.hero_stoneware, "Blue stoneware vase", "W.carter",
+            "https://commons.wikimedia.org/wiki/File:Vas_nr_20,_glazed_stoneware_vase_by_Curt-M._Addin_2.jpg",
+            "CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0")
+    )
+    private var heroIndex = 0
+    private val heroHandler = Handler(Looper.getMainLooper())
+    private val heroAdvance = object : Runnable {
+        override fun run() {
+            if (libraryPanel.visibility == View.VISIBLE) showHeroPhoto((heroIndex + 1) % heroPhotos.size)
+            heroHandler.postDelayed(this, 8000)
+        }
+    }
 
     private val requestCamera = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -128,6 +161,12 @@ class MainActivity : ComponentActivity() {
         galleryPanel = findViewById(R.id.galleryPanel)
         viewerPanel = findViewById(R.id.viewerPanel)
         libraryContent = findViewById(R.id.libraryContent)
+        homeButton = findViewById(R.id.libraryButton)
+        heroImage = findViewById(R.id.heroImage)
+        heroTitleText = findViewById(R.id.heroTitleText)
+        heroCounterText = findViewById(R.id.heroCounterText)
+        heroCreditText = findViewById(R.id.heroCreditText)
+        heroDotsText = findViewById(R.id.heroDotsText)
         galleryImage = findViewById(R.id.galleryImage)
         profileView = findViewById(R.id.profileView)
         vessel3dView = findViewById(R.id.vessel3dView)
@@ -141,10 +180,16 @@ class MainActivity : ComponentActivity() {
         sensitivity = findViewById(R.id.sensitivity)
         mlOutlineSwitch = findViewById(R.id.mlOutlineSwitch)
 
-        findViewById<Button>(R.id.libraryButton).setOnClickListener { showLibrary() }
+        homeButton.setOnClickListener { showLibrary() }
         findViewById<Button>(R.id.newFolderButton).setOnClickListener { createFolderDialog() }
-        findViewById<Button>(R.id.liveButton).setOnClickListener { showCamera() }
-        findViewById<Button>(R.id.pickButton).setOnClickListener {
+        findViewById<View>(R.id.myVesselsButton).setOnClickListener {
+            libraryPanel.smoothScrollTo(0, libraryContent.top)
+        }
+        findViewById<View>(R.id.heroNextButton).setOnClickListener {
+            showHeroPhoto((heroIndex + 1) % heroPhotos.size)
+        }
+        findViewById<View>(R.id.liveButton).setOnClickListener { showCamera() }
+        findViewById<View>(R.id.pickButton).setOnClickListener {
             pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
         exportButton.setOnClickListener { saveObj.launch("pottery-vessel.obj") }
@@ -186,10 +231,40 @@ class MainActivity : ComponentActivity() {
                 }
             }
         })
+        showHeroPhoto(0)
         showLibrary()
     }
 
+    private fun showHeroPhoto(index: Int) {
+        heroIndex = index
+        val item = heroPhotos[index]
+        heroImage.setImageResource(item.image)
+        heroImage.contentDescription = item.title
+        heroTitleText.text = item.title
+        heroCounterText.text = String.format(Locale.US, "FORM STUDY %02d / %02d",
+            index + 1, heroPhotos.size)
+        heroDotsText.text = heroPhotos.indices.joinToString("  ") { if (it == index) "●" else "○" }
+        heroCreditText.text = Html.fromHtml(
+            "Photo: <a href=\"${item.source}\">${item.artist}</a> · " +
+                "<a href=\"${item.licenseUrl}\">${item.license}</a> · display cropped",
+            Html.FROM_HTML_MODE_LEGACY
+        )
+        heroCreditText.movementMethod = LinkMovementMethod.getInstance()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        heroHandler.removeCallbacks(heroAdvance)
+        heroHandler.postDelayed(heroAdvance, 8000)
+    }
+
+    override fun onPause() {
+        heroHandler.removeCallbacks(heroAdvance)
+        super.onPause()
+    }
+
     private fun showCamera() {
+        homeButton.visibility = View.VISIBLE
         libraryPanel.visibility = View.GONE
         viewerPanel.visibility = View.GONE
         cameraPanel.visibility = View.VISIBLE
@@ -258,6 +333,7 @@ class MainActivity : ComponentActivity() {
         extractionVersion++
         val version = photoVersion
         controller?.unbind()
+        homeButton.visibility = View.VISIBLE
         cameraPanel.visibility = View.GONE
         libraryPanel.visibility = View.GONE
         viewerPanel.visibility = View.GONE
@@ -432,6 +508,7 @@ class MainActivity : ComponentActivity() {
 
     private fun showLibrary() {
         controller?.unbind()
+        homeButton.visibility = View.GONE
         cameraPanel.visibility = View.GONE
         galleryPanel.visibility = View.GONE
         viewerPanel.visibility = View.GONE
@@ -441,6 +518,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showGallery() {
+        homeButton.visibility = View.VISIBLE
         cameraPanel.visibility = View.GONE
         libraryPanel.visibility = View.GONE
         viewerPanel.visibility = View.GONE
@@ -449,6 +527,7 @@ class MainActivity : ComponentActivity() {
 
     private fun show3d() {
         if (mesh == null) return
+        homeButton.visibility = View.VISIBLE
         cameraPanel.visibility = View.GONE
         libraryPanel.visibility = View.GONE
         galleryPanel.visibility = View.GONE

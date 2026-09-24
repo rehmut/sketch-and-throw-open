@@ -2,30 +2,102 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="#F6F0E8" android:orientation="vertical">
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:padding="16dp" android:text="Pottery Wheel Detector"
-        android:textColor="#2D241E" android:textSize="23sp" android:textStyle="bold" />
+    android:background="#FFFFFF" android:orientation="vertical">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:paddingLeft="8dp" android:paddingRight="8dp">
-        <Button android:id="@+id/libraryButton" android:layout_width="0dp"
-            android:layout_height="wrap_content" android:layout_weight="1" android:text="Library" />
-        <Button android:id="@+id/pickButton" android:layout_width="0dp"
-            android:layout_height="wrap_content" android:layout_weight="1" android:text="Pick photo" />
-        <Button android:id="@+id/liveButton" android:layout_width="0dp"
-            android:layout_height="wrap_content" android:layout_weight="1" android:text="Live camera" />
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingLeft="18dp" android:paddingRight="12dp" android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Centra" android:textColor="#243B30" android:textSize="29sp"
+                android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="YOUR POTTERY STUDIO" android:textColor="#658174"
+                android:textSize="10sp" android:letterSpacing="0.16" />
+        </LinearLayout>
+        <Button android:id="@+id/libraryButton" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="Home" />
     </LinearLayout>
     <ScrollView android:id="@+id/libraryPanel" android:layout_width="match_parent"
         android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:padding="12dp">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Saved vessels" android:textColor="#2D241E"
-                android:textSize="21sp" android:textStyle="bold" />
-            <Button android:id="@+id/newFolderButton" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="New folder" />
+            android:orientation="vertical">
+            <FrameLayout android:layout_width="match_parent" android:layout_height="282dp"
+                android:background="#DFE5DE">
+                <ImageView android:id="@+id/heroImage" android:layout_width="match_parent"
+                    android:layout_height="match_parent" android:scaleType="centerCrop"
+                    android:contentDescription="Featured pottery photograph" />
+                <ImageButton android:id="@+id/heroNextButton" android:layout_width="48dp"
+                    android:layout_height="48dp" android:layout_gravity="right|center_vertical"
+                    android:layout_marginRight="16dp" android:background="@drawable/bg_next"
+                    android:src="@drawable/ic_next" android:contentDescription="Next pottery photo" />
+            </FrameLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:paddingLeft="20dp" android:paddingRight="20dp"
+                android:paddingTop="16dp" android:paddingBottom="14dp">
+                <TextView android:id="@+id/heroCounterText" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="FORM STUDY 01 / 03"
+                    android:textColor="#6A8175" android:textSize="11sp" android:letterSpacing="0.14" />
+                <TextView android:id="@+id/heroTitleText" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:paddingTop="5dp"
+                    android:text="Pottery inspiration" android:textColor="#243B30"
+                    android:textSize="22sp" android:textStyle="bold" />
+                <TextView android:id="@+id/heroCreditText" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:paddingTop="6dp"
+                    android:text="Photo credit and license" android:textColor="#526D60"
+                    android:textColorLink="#397B60" android:textSize="12sp" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:gravity="center" android:orientation="horizontal" android:paddingBottom="14dp">
+                <TextView android:id="@+id/heroDotsText" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:text="●  ○  ○"
+                    android:textColor="#397B60" android:textSize="17sp" />
+            </LinearLayout>
+            <View android:layout_width="match_parent" android:layout_height="1dp"
+                android:layout_marginLeft="20dp" android:layout_marginRight="20dp"
+                android:background="#E4EAE5" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:paddingTop="20dp" android:paddingBottom="18dp">
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <ImageButton android:id="@+id/myVesselsButton" android:layout_width="74dp"
+                        android:layout_height="74dp" android:background="@drawable/bg_action_secondary"
+                        android:src="@drawable/ic_folder" android:contentDescription="Jump to saved vessels" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:paddingTop="8dp" android:text="My vessels" android:textColor="#53625C"
+                        android:textSize="14sp" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <ImageButton android:id="@+id/pickButton" android:layout_width="82dp"
+                        android:layout_height="82dp" android:background="@drawable/bg_action_primary"
+                        android:src="@drawable/ic_gallery" android:contentDescription="Pick a pottery photo" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:paddingTop="8dp" android:text="Pick photo" android:textColor="#397B60"
+                        android:textSize="14sp" android:textStyle="bold" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <ImageButton android:id="@+id/liveButton" android:layout_width="74dp"
+                        android:layout_height="74dp" android:background="@drawable/bg_action_secondary"
+                        android:src="@drawable/ic_camera" android:contentDescription="Open live camera" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:paddingTop="8dp" android:text="Live camera" android:textColor="#53625C"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:paddingLeft="12dp" android:paddingRight="12dp"
+                android:paddingBottom="18dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="Saved vessels" android:textColor="#243B30"
+                    android:textSize="21sp" android:textStyle="bold" />
+                <Button android:id="@+id/newFolderButton" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="New folder" />
             <LinearLayout android:id="@+id/libraryContent" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:orientation="vertical" />
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
     <FrameLayout android:id="@+id/cameraPanel" android:layout_width="match_parent"
