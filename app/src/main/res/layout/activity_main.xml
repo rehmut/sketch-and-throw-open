@@ -1,49 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#F6F0E8"
-    android:orientation="vertical">
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="16dp"
-        android:text="Pottery Wheel Detector"
-        android:textColor="#2D241E"
-        android:textSize="23sp"
-        android:textStyle="bold" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingLeft="8dp"
-        android:paddingRight="8dp">
-        <Button android:id="@+id/liveButton" android:layout_width="0dp"
-            android:layout_height="wrap_content" android:layout_weight="1" android:text="Live camera" />
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="#F6F0E8" android:orientation="vertical">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:padding="16dp" android:text="Pottery Wheel Detector"
+        android:textColor="#2D241E" android:textSize="23sp" android:textStyle="bold" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:paddingLeft="8dp" android:paddingRight="8dp">
+        <Button android:id="@+id/libraryButton" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1" android:text="Library" />
         <Button android:id="@+id/pickButton" android:layout_width="0dp"
             android:layout_height="wrap_content" android:layout_weight="1" android:text="Pick photo" />
-        <Button android:id="@+id/exportButton" android:layout_width="0dp"
-            android:layout_height="wrap_content" android:layout_weight="1"
-            android:enabled="false" android:text="Export OBJ" />
+        <Button android:id="@+id/liveButton" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1" android:text="Live camera" />
     </LinearLayout>
-
+    <ScrollView android:id="@+id/libraryPanel" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="12dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Saved vessels" android:textColor="#2D241E"
+                android:textSize="21sp" android:textStyle="bold" />
+            <Button android:id="@+id/newFolderButton" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="New folder" />
+            <LinearLayout android:id="@+id/libraryContent" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical" />
+        </LinearLayout>
+    </ScrollView>
     <FrameLayout android:id="@+id/cameraPanel" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1" android:background="#1C1714">
+        android:layout_height="0dp" android:layout_weight="1" android:background="#1C1714"
+        android:visibility="gone">
         <androidx.camera.view.PreviewView android:id="@+id/preview"
             android:layout_width="match_parent" android:layout_height="match_parent"
             app:scaleType="fillCenter" />
         <com.example.potterywheeldetector.DetectionOverlay android:id="@+id/overlay"
             android:layout_width="match_parent" android:layout_height="match_parent" />
     </FrameLayout>
-
     <ScrollView android:id="@+id/galleryPanel" android:layout_width="match_parent"
         android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true"
         android:visibility="gone">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:paddingLeft="8dp" android:paddingRight="8dp">
+                <Button android:id="@+id/saveVesselButton" android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_weight="1"
+                    android:enabled="false" android:text="Save vessel" />
+                <Button android:id="@+id/open3dButton" android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_weight="1"
+                    android:enabled="false" android:text="Open 3D" />
+                <Button android:id="@+id/exportButton" android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_weight="1"
+                    android:enabled="false" android:text="Export OBJ" />
+            </LinearLayout>
             <com.example.potterywheeldetector.GalleryOutlineView android:id="@+id/galleryImage"
                 android:layout_width="match_parent" android:layout_height="300dp"
                 android:background="#29211D" />
@@ -56,24 +66,62 @@
                 android:paddingRight="12dp" android:max="100" android:progress="50" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:padding="12dp" android:textColor="#675A50"
-                android:text="Adjust outline sensitivity or tap near the vessel centre. Best results: one upright pot, straight-on view, plain background." />
+                android:text="Tap inside the vessel to guide the outline. Use a straight-on photo of one upright pot." />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:paddingLeft="12dp" android:text="2D profile" android:textColor="#2D241E"
                 android:textSize="18sp" android:textStyle="bold" />
             <com.example.potterywheeldetector.ProfileView android:id="@+id/profileView"
-                android:layout_width="match_parent" android:layout_height="230dp"
+                android:layout_width="match_parent" android:layout_height="300dp"
                 android:background="#E9DDD0" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:paddingLeft="12dp" android:paddingTop="12dp"
-                android:text="3D vessel · drag to rotate" android:textColor="#2D241E"
+                android:text="Scale and clay estimate" android:textColor="#2D241E"
                 android:textSize="18sp" android:textStyle="bold" />
-            <com.example.potterywheeldetector.Vessel3DView android:id="@+id/vessel3dView"
-                android:layout_width="match_parent" android:layout_height="320dp"
-                android:background="#1C1714" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingLeft="12dp" android:paddingTop="8dp" android:text="Known height (cm)"
+                android:textColor="#675A50" />
+            <EditText android:id="@+id/heightInput" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:hint="Vessel height in cm"
+                android:inputType="numberDecimal" android:singleLine="true"
+                android:paddingLeft="12dp" android:paddingRight="12dp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingLeft="12dp" android:paddingTop="8dp" android:text="Assumed wall and base thickness (mm)"
+                android:textColor="#675A50" />
+            <EditText android:id="@+id/wallInput" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:hint="Wall thickness in mm"
+                android:inputType="numberDecimal" android:singleLine="true" android:text="5"
+                android:paddingLeft="12dp" android:paddingRight="12dp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingLeft="12dp" android:paddingTop="8dp" android:text="Extra clay for trimming (%)"
+                android:textColor="#675A50" />
+            <EditText android:id="@+id/allowanceInput" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:hint="Trimming allowance in %"
+                android:inputType="numberDecimal" android:singleLine="true" android:text="25"
+                android:paddingLeft="12dp" android:paddingRight="12dp" />
+            <TextView android:id="@+id/measurementsText" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:padding="12dp"
+                android:text="Enter a vessel height to see dimensions and clay estimate."
+                android:textColor="#2D241E" android:textSize="16sp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingLeft="12dp" android:paddingRight="12dp" android:paddingBottom="18dp"
+                android:textColor="#675A50"
+                android:text="Approximate wet clay to centre on the wheel. Assumes a uniform wall and base, 1.8 g/cm³ clay density, and rotational symmetry. The photo cannot reveal the inside shape or shrinkage." />
         </LinearLayout>
     </ScrollView>
-
+    <LinearLayout android:id="@+id/viewerPanel" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical"
+        android:visibility="gone" android:background="#1C1714">
+        <Button android:id="@+id/backToProfileButton" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Back to profile" />
+        <com.example.potterywheeldetector.Vessel3DView android:id="@+id/vessel3dView"
+            android:layout_width="match_parent" android:layout_height="0dp"
+            android:layout_weight="1" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:gravity="center" android:padding="12dp" android:textColor="#FFFFFF"
+            android:text="Drag to rotate the vessel" />
+    </LinearLayout>
     <TextView android:id="@+id/status" android:layout_width="match_parent"
         android:layout_height="wrap_content" android:minHeight="56dp" android:padding="14dp"
-        android:text="Starting camera…" android:textColor="#2D241E" android:textSize="14sp" />
+        android:text="Open a vessel or pick a photo." android:textColor="#2D241E"
+        android:textSize="14sp" />
 </LinearLayout>

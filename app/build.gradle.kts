@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.potterywheeldetector"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
     }
 
     buildTypes {
@@ -39,4 +39,5 @@ dependencies {
     implementation("androidx.camera:camera-mlkit-vision:$cameraXVersion")
     implementation("com.google.mlkit:object-detection:17.0.2")
     implementation("com.google.mediapipe:tasks-vision:1.0.0")
+    testImplementation("junit:junit:4.13.2")
 }

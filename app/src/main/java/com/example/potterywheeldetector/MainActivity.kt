@@ -11,13 +11,21 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
+import android.widget.EditText
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
+import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.ArrayAdapter
+import android.widget.ImageView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.ComponentActivity
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,6 +35,7 @@ import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import android.app.AlertDialog
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.framework.image.ByteBufferExtractor
 import com.google.mediapipe.tasks.components.containers.NormalizedKeypoint
@@ -39,17 +48,27 @@ import com.google.mlkit.vision.objects.ObjectDetection
 import com.google.mlkit.vision.objects.ObjectDetector
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import java.util.concurrent.Executors
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     private lateinit var preview: PreviewView
     private lateinit var overlay: DetectionOverlay
     private lateinit var status: TextView
     private lateinit var cameraPanel: FrameLayout
+    private lateinit var libraryPanel: ScrollView
     private lateinit var galleryPanel: ScrollView
+    private lateinit var viewerPanel: LinearLayout
+    private lateinit var libraryContent: LinearLayout
     private lateinit var galleryImage: GalleryOutlineView
     private lateinit var profileView: ProfileView
     private lateinit var vessel3dView: Vessel3DView
     private lateinit var exportButton: Button
+    private lateinit var saveVesselButton: Button
+    private lateinit var open3dButton: Button
+    private lateinit var heightInput: EditText
+    private lateinit var wallInput: EditText
+    private lateinit var allowanceInput: EditText
+    private lateinit var measurementsText: TextView
     private lateinit var sensitivity: SeekBar
     private lateinit var mlOutlineSwitch: Switch
     private val worker = Executors.newSingleThreadExecutor()
@@ -66,6 +85,8 @@ class MainActivity : ComponentActivity() {
     private var mlRequestVersion = -1
     private var mlPoint: PointF? = null
     private var interactiveSegmenter: InteractiveSegmenter? = null
+    private lateinit var vesselStore: VesselStore
+    private var currentSavedId: String? = null
 
     private val requestCamera = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -99,22 +120,37 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         preview = findViewById(R.id.preview)
+        vesselStore = VesselStore(this)
         overlay = findViewById(R.id.overlay)
         status = findViewById(R.id.status)
         cameraPanel = findViewById(R.id.cameraPanel)
+        libraryPanel = findViewById(R.id.libraryPanel)
         galleryPanel = findViewById(R.id.galleryPanel)
+        viewerPanel = findViewById(R.id.viewerPanel)
+        libraryContent = findViewById(R.id.libraryContent)
         galleryImage = findViewById(R.id.galleryImage)
         profileView = findViewById(R.id.profileView)
         vessel3dView = findViewById(R.id.vessel3dView)
         exportButton = findViewById(R.id.exportButton)
+        saveVesselButton = findViewById(R.id.saveVesselButton)
+        open3dButton = findViewById(R.id.open3dButton)
+        heightInput = findViewById(R.id.heightInput)
+        wallInput = findViewById(R.id.wallInput)
+        allowanceInput = findViewById(R.id.allowanceInput)
+        measurementsText = findViewById(R.id.measurementsText)
         sensitivity = findViewById(R.id.sensitivity)
         mlOutlineSwitch = findViewById(R.id.mlOutlineSwitch)
 
+        findViewById<Button>(R.id.libraryButton).setOnClickListener { showLibrary() }
+        findViewById<Button>(R.id.newFolderButton).setOnClickListener { createFolderDialog() }
         findViewById<Button>(R.id.liveButton).setOnClickListener { showCamera() }
         findViewById<Button>(R.id.pickButton).setOnClickListener {
             pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
         exportButton.setOnClickListener { saveObj.launch("pottery-vessel.obj") }
+        saveVesselButton.setOnClickListener { saveVesselDialog() }
+        open3dButton.setOnClickListener { show3d() }
+        findViewById<Button>(R.id.backToProfileButton).setOnClickListener { showGallery() }
         galleryImage.onVesselTap = { point ->
             seed = point
             if (mlOutlineSwitch.isChecked && photo != null) {
@@ -133,10 +169,29 @@ class MainActivity : ComponentActivity() {
             }
             runExtraction()
         }
-        showCamera()
+        val textWatcher = object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) { updateMeasurements() }
+        }
+        heightInput.addTextChangedListener(textWatcher)
+        wallInput.addTextChangedListener(textWatcher)
+        allowanceInput.addTextChangedListener(textWatcher)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when {
+                    viewerPanel.visibility == View.VISIBLE -> showGallery()
+                    libraryPanel.visibility != View.VISIBLE -> showLibrary()
+                    else -> finish()
+                }
+            }
+        })
+        showLibrary()
     }
 
     private fun showCamera() {
+        libraryPanel.visibility = View.GONE
+        viewerPanel.visibility = View.GONE
         cameraPanel.visibility = View.VISIBLE
         galleryPanel.visibility = View.GONE
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) !=
@@ -204,8 +259,14 @@ class MainActivity : ComponentActivity() {
         val version = photoVersion
         controller?.unbind()
         cameraPanel.visibility = View.GONE
+        libraryPanel.visibility = View.GONE
+        viewerPanel.visibility = View.GONE
         galleryPanel.visibility = View.VISIBLE
         status.text = "Opening photo…"
+        currentSavedId = null
+        heightInput.setText("")
+        wallInput.setText("5")
+        allowanceInput.setText("25")
         photo = null
         focus = null
         seed = null
@@ -218,6 +279,8 @@ class MainActivity : ComponentActivity() {
         profileView.profile = null
         vessel3dView.mesh = null
         exportButton.isEnabled = false
+        saveVesselButton.isEnabled = false
+        open3dButton.isEnabled = false
         worker.execute {
             try {
                 val decoded = if (Build.VERSION.SDK_INT >= 28) {
@@ -351,6 +414,9 @@ class MainActivity : ComponentActivity() {
                 vessel3dView.mesh = newMesh
                 mesh = newMesh
                 exportButton.isEnabled = newMesh != null
+                saveVesselButton.isEnabled = newMesh != null
+                open3dButton.isEnabled = newMesh != null
+                updateMeasurements()
                 status.text = if (profile == null) {
                     "No clear outline found. Try a plain background, tap the vessel, or adjust sensitivity."
                 } else if (mlProfile != null) {
@@ -362,6 +428,261 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun showLibrary() {
+        controller?.unbind()
+        cameraPanel.visibility = View.GONE
+        galleryPanel.visibility = View.GONE
+        viewerPanel.visibility = View.GONE
+        libraryPanel.visibility = View.VISIBLE
+        renderLibrary()
+        status.text = "Choose a saved vessel or pick a new photo."
+    }
+
+    private fun showGallery() {
+        cameraPanel.visibility = View.GONE
+        libraryPanel.visibility = View.GONE
+        viewerPanel.visibility = View.GONE
+        galleryPanel.visibility = View.VISIBLE
+    }
+
+    private fun show3d() {
+        if (mesh == null) return
+        cameraPanel.visibility = View.GONE
+        libraryPanel.visibility = View.GONE
+        galleryPanel.visibility = View.GONE
+        viewerPanel.visibility = View.VISIBLE
+        status.text = "Drag on the model to rotate it; use Back to profile to return."
+    }
+
+    private fun renderLibrary() {
+        libraryContent.removeAllViews()
+        for (folder in vesselStore.folders()) {
+            val folderRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            val heading = TextView(this).apply {
+                text = folder.name
+                textSize = 19f
+                setTextColor(0xff2d241e.toInt())
+                setPadding(4, 24, 4, 8)
+            }
+            folderRow.addView(heading, LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            folderRow.addView(Button(this).apply {
+                text = "Edit folder"
+                isAllCaps = false
+                setOnClickListener { editFolderDialog(folder) }
+            })
+            libraryContent.addView(folderRow)
+            val saved = vesselStore.vessels(folder.id)
+            if (saved.isEmpty()) {
+                libraryContent.addView(TextView(this).apply {
+                    text = "No vessels yet"
+                    setPadding(12, 4, 4, 12)
+                })
+            }
+            for (entry in saved) {
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(4, 6, 4, 6)
+                }
+                val thumbnail = ImageView(this).apply {
+                    setImageBitmap(vesselStore.loadThumbnail(entry.id))
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    setOnClickListener { openSavedVessel(entry) }
+                }
+                row.addView(thumbnail, LinearLayout.LayoutParams(72.dp, 72.dp))
+                val open = Button(this).apply {
+                    text = entry.name
+                    isAllCaps = false
+                    setOnClickListener { openSavedVessel(entry) }
+                }
+                row.addView(open, LinearLayout.LayoutParams(0, 72.dp, 1f))
+                val delete = Button(this).apply {
+                    text = "Delete"
+                    isAllCaps = false
+                    setOnClickListener {
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle("Delete ${entry.name}?")
+                            .setMessage("This removes the saved photo and vessel profile from the app.")
+                            .setNegativeButton("Cancel", null)
+                            .setPositiveButton("Delete") { _, _ ->
+                                vesselStore.delete(entry.id)
+                                if (currentSavedId == entry.id) currentSavedId = null
+                                renderLibrary()
+                            }.show()
+                    }
+                }
+                row.addView(delete, LinearLayout.LayoutParams(96.dp, 72.dp))
+                libraryContent.addView(row)
+            }
+        }
+    }
+
+    private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
+
+    private fun createFolderDialog() {
+        val input = EditText(this).apply { hint = "Folder name, e.g. Bowls" }
+        AlertDialog.Builder(this).setTitle("New folder").setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Create") { _, _ ->
+                try {
+                    vesselStore.createFolder(input.text.toString())
+                    renderLibrary()
+                    status.text = "Folder created."
+                } catch (error: Exception) {
+                    status.text = "Choose a nonempty folder name that is not already used."
+                }
+            }.show()
+    }
+
+    private fun editFolderDialog(folder: VesselFolder) {
+        AlertDialog.Builder(this).setTitle(folder.name)
+            .setItems(arrayOf("Rename folder", "Delete empty folder")) { _, choice ->
+                if (choice == 0) {
+                    val input = EditText(this).apply { setText(folder.name); selectAll() }
+                    AlertDialog.Builder(this).setTitle("Rename folder").setView(input)
+                        .setNegativeButton("Cancel", null)
+                        .setPositiveButton("Rename") { _, _ ->
+                            try {
+                                vesselStore.renameFolder(folder.id, input.text.toString())
+                                renderLibrary()
+                            } catch (error: Exception) {
+                                status.text = "Choose a nonempty name that is not already used."
+                            }
+                        }.show()
+                } else {
+                    if (vesselStore.vessels(folder.id).isNotEmpty()) {
+                        status.text = "Move or delete this folder's vessels before deleting it."
+                    } else {
+                        AlertDialog.Builder(this).setTitle("Delete ${folder.name}?")
+                            .setNegativeButton("Cancel", null)
+                            .setPositiveButton("Delete") { _, _ ->
+                                try {
+                                    vesselStore.deleteFolder(folder.id)
+                                    renderLibrary()
+                                } catch (error: Exception) {
+                                    status.text = "Keep at least one folder in the library."
+                                }
+                            }.show()
+                    }
+                }
+            }.show()
+    }
+
+    private fun saveVesselDialog() {
+        val bitmap = photo ?: return
+        val profile = profileView.profile ?: return
+        val folders = vesselStore.folders()
+        val previous = vesselStore.find(currentSavedId)
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16.dp, 4.dp, 16.dp, 4.dp)
+        }
+        val nameInput = EditText(this).apply {
+            hint = "Vessel name"
+            setText(previous?.name ?: "Untitled vessel")
+            selectAll()
+        }
+        val folderSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
+                folders.map { it.name })
+            val index = folders.indexOfFirst { it.id == previous?.folderId }
+            if (index >= 0) setSelection(index)
+        }
+        form.addView(nameInput)
+        form.addView(folderSpinner)
+        AlertDialog.Builder(this).setTitle(if (previous == null) "Save vessel" else "Update vessel")
+            .setView(form).setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                try {
+                    val folder = folders[folderSpinner.selectedItemPosition]
+                    val entry = vesselStore.save(currentSavedId, folder.id,
+                        nameInput.text.toString(), bitmap, profile,
+                        heightInput.text.toString().replace(',', '.').toDoubleOrNull(),
+                        wallInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 5.0,
+                        allowanceInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 25.0)
+                    currentSavedId = entry.id
+                    status.text = "Saved ${entry.name} in ${folder.name}."
+                } catch (error: Exception) {
+                    status.text = "Could not save vessel: ${error.localizedMessage ?: "unknown error"}"
+                }
+            }.show()
+    }
+
+    private fun openSavedVessel(entry: SavedVessel) {
+        val bitmap = vesselStore.loadImage(entry.id)
+        if (bitmap == null) {
+            status.text = "Saved photo is missing."
+            return
+        }
+        photoVersion++
+        extractionVersion++
+        controller?.unbind()
+        photo = bitmap
+        focus = null
+        seed = null
+        mlConfidence = null
+        mlRequestVersion = -1
+        mlPoint = null
+        mlModelState = ""
+        currentSavedId = entry.id
+        galleryImage.bitmap = bitmap
+        galleryImage.profile = entry.profile
+        profileView.profile = entry.profile
+        val savedMesh = VesselMeshBuilder.build(entry.profile)
+        vessel3dView.mesh = savedMesh
+        mesh = savedMesh
+        saveVesselButton.isEnabled = true
+        open3dButton.isEnabled = true
+        exportButton.isEnabled = true
+        heightInput.setText(entry.heightCm?.toString() ?: "")
+        wallInput.setText(entry.wallMm.toString())
+        allowanceInput.setText(entry.allowancePercent.toString())
+        updateMeasurements()
+        showGallery()
+        status.text = "Opened ${entry.name}. Tap inside the photo to retrace its outline."
+    }
+
+    private fun updateMeasurements() {
+        if (!::measurementsText.isInitialized) return
+        val profile = profileView.profile
+        if (profile == null) {
+            measurementsText.text = "Select a photo to see its profile."
+            profileView.measurements = null
+            return
+        }
+        val height = heightInput.text.toString().replace(',', '.').toDoubleOrNull()
+        val wall = wallInput.text.toString().replace(',', '.').toDoubleOrNull()
+        val allowance = allowanceInput.text.toString().replace(',', '.').toDoubleOrNull()
+        if (height == null || height <= 0.0) {
+            measurementsText.text = String.format(Locale.getDefault(),
+                "Height : widest diameter = %.2f : 1. Enter a height in cm for dimensions.",
+                profile.height / profile.width)
+            profileView.measurements = null
+            return
+        }
+        if (height > 500.0 || wall == null || wall !in 0.5..50.0 ||
+            allowance == null || allowance !in 0.0..300.0
+        ) {
+            measurementsText.text = "Enter a height up to 500 cm, wall 0.5–50 mm, and allowance 0–300%."
+            profileView.measurements = null
+            return
+        }
+        val measured = VesselMeasurementCalculator.calculate(profile, height, wall, allowance)
+            ?: return
+        profileView.measurements = measured
+        measurementsText.text = String.format(Locale.getDefault(),
+            "Height: %.1f cm\nWidest diameter: %.1f cm at %.1f cm above base\n" +
+                "Narrowest body diameter: %.1f cm at %.1f cm above base\n" +
+                "Rim / foot diameter: %.1f / %.1f cm\n" +
+                "Height : widest diameter = %.2f : 1\n" +
+                "Clay to centre: about %.0f g (%.2f kg)",
+            measured.heightCm, measured.widestDiameterCm, measured.widestFromBaseCm,
+            measured.narrowestDiameterCm, measured.narrowestFromBaseCm,
+            measured.rimDiameterCm, measured.footDiameterCm,
+            measured.heightCm / measured.widestDiameterCm,
+            measured.estimatedClayGrams, measured.estimatedClayGrams / 1000.0)
     }
 
     override fun onDestroy() {
