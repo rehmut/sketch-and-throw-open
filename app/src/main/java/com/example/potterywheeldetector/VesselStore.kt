@@ -20,7 +20,8 @@ data class SavedVessel(
     val allowancePercent: Double,
     val profile: VesselProfile,
     val baseMm: Double = wallMm,
-    val handleOptions: HandleOptions = HandleOptions()
+    val handleOptions: HandleOptions = HandleOptions(),
+    val category: VesselCategory = VesselCategory.suggest(profile, handleOptions.enabled)
 )
 
 class VesselStore(context: Context) {
@@ -68,7 +69,8 @@ class VesselStore(context: Context) {
     fun save(
         existingId: String?, folderId: String, name: String, bitmap: Bitmap,
         profile: VesselProfile, heightCm: Double?, wallMm: Double,
-        allowancePercent: Double, baseMm: Double, handleOptions: HandleOptions
+        allowancePercent: Double, baseMm: Double, handleOptions: HandleOptions,
+        category: VesselCategory
     ): SavedVessel {
         require(folders.any { it.id == folderId })
         val clean = name.trim()
@@ -86,7 +88,7 @@ class VesselStore(context: Context) {
             throw error
         }
         val entry = SavedVessel(id, folderId, clean, old?.createdAt ?: System.currentTimeMillis(),
-            heightCm, wallMm, allowancePercent, profile, baseMm, handleOptions)
+            heightCm, wallMm, allowancePercent, profile, baseMm, handleOptions, category)
         vessels.removeAll { it.id == id }
         vessels.add(entry)
         persist()
@@ -95,13 +97,6 @@ class VesselStore(context: Context) {
 
     fun loadImage(id: String): Bitmap? = try {
         AtomicFile(File(directory, "$id.jpg")).openRead().use { BitmapFactory.decodeStream(it) }
-    } catch (error: Exception) { null }
-
-    fun loadThumbnail(id: String): Bitmap? = try {
-        AtomicFile(File(directory, "$id.jpg")).openRead().use {
-            BitmapFactory.decodeStream(it, null,
-                BitmapFactory.Options().apply { inSampleSize = 8 })
-        }
     } catch (error: Exception) { null }
 
     fun delete(id: String) {
@@ -135,16 +130,18 @@ class VesselStore(context: Context) {
                 }
                 if (rows.size < 2) continue
                 val wallMm = item.getDouble("wallMm")
+                val profile = VesselProfile(item.getInt("imageWidth"), item.getInt("imageHeight"),
+                    rows, item.optJSONObject("handle")?.let(::readHandle))
+                val handleOptions = item.optJSONObject("handleOptions")?.let(::readHandleOptions)
+                    ?: HandleOptions()
                 vessels.add(SavedVessel(item.getString("id"), item.getString("folderId"),
                     item.getString("name"), item.getLong("createdAt"),
                     if (item.isNull("heightCm")) null else item.getDouble("heightCm"),
-                    wallMm, item.getDouble("allowancePercent"),
-                    VesselProfile(item.getInt("imageWidth"), item.getInt("imageHeight"), rows,
-                        item.optJSONObject("handle")?.let(::readHandle)),
-                    // Vessels saved before base and handle settings existed.
-                    item.optDouble("baseMm", wallMm),
-                    item.optJSONObject("handleOptions")?.let(::readHandleOptions)
-                        ?: HandleOptions()))
+                    wallMm, item.getDouble("allowancePercent"), profile,
+                    // Vessels saved before base, handle and category existed.
+                    item.optDouble("baseMm", wallMm), handleOptions,
+                    VesselCategory.fromName(item.optString("category"))
+                        ?: VesselCategory.suggest(profile, handleOptions.enabled)))
             }
         } catch (error: Exception) {
             // Keep a damaged index on disk for recovery and present an empty library.
@@ -216,6 +213,7 @@ class VesselStore(context: Context) {
                     .put("imageWidth", entry.profile.imageWidth)
                     .put("imageHeight", entry.profile.imageHeight).put("rows", rows)
                     .put("baseMm", entry.baseMm)
+                    .put("category", entry.category.name)
                     .put("handleOptions", writeHandleOptions(entry.handleOptions))
                     .put("handle", entry.profile.handle?.let(::writeHandle) ?: JSONObject.NULL))
             }

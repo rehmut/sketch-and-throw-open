@@ -27,24 +27,26 @@ class LibraryScreen(
 ) {
     private val density = activity.resources.displayMetrics.density
     private val Int.dp: Int get() = (this * density).toInt()
-    /** Folder shown on its own, or null for all folders. */
-    private var filterFolderId: String? = null
+    /** Category shown on its own, or null for every category. */
+    private var filterCategory: VesselCategory? = null
 
     fun render() {
         content.removeAllViews()
-        val folders = store.folders()
-        if (folders.none { it.id == filterFolderId }) filterFolderId = null
-        if (folders.size > 1) content.addView(folderFilter(folders))
-        folders.filter { filterFolderId == null || it.id == filterFolderId }
-            .forEachIndexed { index, folder ->
-                if (index > 0) content.addView(rule())
-                content.addView(folderHeading(folder))
-                val saved = store.vessels(folder.id)
-                if (saved.isEmpty()) content.addView(label("no vessels yet").apply {
-                    setPadding(0, 2.dp, 0, 10.dp)
-                })
-                saved.forEach { content.addView(vesselRow(it)) }
-            }
+        val used = store.recent(Int.MAX_VALUE).map { it.category }.toSet()
+        if (filterCategory !in used) filterCategory = null
+        if (used.size > 1) content.addView(categoryFilter(VesselCategory.entries.filter { it in used }))
+        var shown = 0
+        store.folders().forEach { folder ->
+            val saved = store.vessels(folder.id)
+                .filter { filterCategory == null || it.category == filterCategory }
+            if (saved.isEmpty() && filterCategory != null) return@forEach
+            if (shown++ > 0) content.addView(rule())
+            content.addView(folderHeading(folder))
+            if (saved.isEmpty()) content.addView(label("no vessels yet").apply {
+                setPadding(0, 2.dp, 0, 10.dp)
+            })
+            saved.forEach { content.addView(vesselRow(it)) }
+        }
     }
 
     fun renderRecent() {
@@ -61,7 +63,7 @@ class LibraryScreen(
                 isFocusable = true
                 contentDescription = "Open ${entry.name}"
                 setOnClickListener { onOpen(entry) }
-                addView(thumbnail(entry, 36), LinearLayout.LayoutParams(36.dp, 36.dp))
+                addView(thumbnail(entry), LinearLayout.LayoutParams(40.dp, 40.dp))
                 addView(TextView(activity).apply {
                     text = entry.name
                     textSize = 12f
@@ -96,19 +98,19 @@ class LibraryScreen(
             }.show()
     }
 
-    private fun folderFilter(folders: List<VesselFolder>): View {
+    private fun categoryFilter(categories: List<VesselCategory>): View {
         val rocker = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             background = activity.getDrawable(R.drawable.bg_rocker)
             setPadding(3.dp, 3.dp, 3.dp, 3.dp)
         }
-        (listOf<VesselFolder?>(null) + folders).forEachIndexed { index, folder ->
+        (listOf<VesselCategory?>(null) + categories).forEachIndexed { index, category ->
             rocker.addView(Button(activity, null, 0, R.style.RockerItem).apply {
-                text = folder?.name?.lowercase() ?: "all"
-                isSelected = folder?.id == filterFolderId
+                text = category?.label ?: "all"
+                isSelected = category == filterCategory
                 setPadding(16.dp, 0, 16.dp, 0)
                 setOnClickListener {
-                    filterFolderId = folder?.id
+                    filterCategory = category
                     render()
                 }
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, 44.dp)
@@ -159,7 +161,7 @@ class LibraryScreen(
             isClickable = true
             isFocusable = true
             setOnClickListener { onOpen(entry) }
-            addView(thumbnail(entry, 44), LinearLayout.LayoutParams(44.dp, 44.dp))
+            addView(thumbnail(entry), LinearLayout.LayoutParams(48.dp, 48.dp))
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(12.dp, 0, 8.dp, 0)
@@ -169,7 +171,7 @@ class LibraryScreen(
                     typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                     setTextColor(activity.getColor(R.color.graphite))
                 })
-                addView(label(dimensions).apply { typeface = Typeface.MONOSPACE })
+                addView(label("${entry.category.label} · $dimensions").apply { typeface = Typeface.MONOSPACE })
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(TextView(activity).apply {
                 text = measured?.let { VesselReadout.grams(it.estimatedClayGrams) } ?: "—"
@@ -242,13 +244,13 @@ class LibraryScreen(
             }.show()
     }
 
-    private fun thumbnail(entry: SavedVessel, sizeDp: Int) = ImageView(activity).apply {
-        setImageBitmap(store.loadThumbnail(entry.id))
-        scaleType = ImageView.ScaleType.CENTER_CROP
+    /** The category's line illustration; the photo stays stored for retracing. */
+    private fun thumbnail(entry: SavedVessel) = ImageView(activity).apply {
+        setImageResource(entry.category.illustration)
+        scaleType = ImageView.ScaleType.FIT_CENTER
         background = activity.getDrawable(R.drawable.bg_thumb)
-        clipToOutline = true
+        setPadding(4.dp, 4.dp, 4.dp, 4.dp)
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        minimumWidth = sizeDp.dp
     }
 
     private fun label(text: String) = TextView(activity).apply {

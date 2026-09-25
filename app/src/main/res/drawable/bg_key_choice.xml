@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A key for picking an illustrated option: selected keeps its light face so the drawing stays legible. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <layer-list>
+            <item><shape><solid android:color="@color/signal" /><corners android:radius="@dimen/radius_key" /></shape></item>
+            <item android:bottom="4dp"><shape><solid android:color="@color/key" /><stroke android:width="2dp" android:color="@color/graphite" /><corners android:radius="@dimen/radius_key" /></shape></item>
+        </layer-list>
+    </item>
+    <item android:state_pressed="true">
+        <inset android:insetTop="2dp"><shape><solid android:color="@color/key_pressed" /><corners android:radius="@dimen/radius_key" /></shape></inset>
+    </item>
+    <item>
+        <layer-list>
+            <item><shape><solid android:color="@color/rule" /><corners android:radius="@dimen/radius_key" /></shape></item>
+            <item android:bottom="2dp"><shape><solid android:color="@color/key" /><corners android:radius="@dimen/radius_key" /></shape></item>
+        </layer-list>
+    </item>
+</selector>

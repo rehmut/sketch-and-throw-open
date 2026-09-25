@@ -52,7 +52,8 @@ object VesselProfileExtractor {
         bitmap: Bitmap,
         focus: Rect? = null,
         seed: PointF? = null,
-        sensitivity: Int = 50
+        sensitivity: Int = 50,
+        detectHandles: Boolean = true
     ): VesselProfile? {
         val w = bitmap.width
         val h = bitmap.height
@@ -75,7 +76,7 @@ object VesselProfileExtractor {
 
         val mask = BooleanArray(pixels.size) { distances[it] >= cutoff }
         return extractFromMask(w, h, mask, focus?.toMaskBox(), seed?.toMaskPoint(),
-            mirrorMissingSide = true)
+            mirrorMissingSide = true, detectHandles = detectHandles)
     }
 
     fun extractFromConfidence(
@@ -84,7 +85,8 @@ object VesselProfileExtractor {
         confidence: FloatArray,
         focus: Rect? = null,
         seed: PointF? = null,
-        sensitivity: Int = 50
+        sensitivity: Int = 50,
+        detectHandles: Boolean = true
     ): VesselProfile? {
         if (width < 32 || height < 32 || confidence.size != width * height) return null
         val threshold = 0.8f - sensitivity.coerceIn(0, 100) * 0.006f
@@ -94,7 +96,7 @@ object VesselProfileExtractor {
         val handleThreshold = threshold * HANDLE_CONFIDENCE_FACTOR
         val handleMask = BooleanArray(confidence.size) { confidence[it] >= handleThreshold }
         return extractFromMask(width, height, mask, focus?.toMaskBox(), seed?.toMaskPoint(),
-            mirrorMissingSide = false, handleMask = handleMask)
+            mirrorMissingSide = false, handleMask = handleMask, detectHandles = detectHandles)
     }
 
     internal fun extractFromMask(
@@ -105,7 +107,9 @@ object VesselProfileExtractor {
         seed: MaskPoint?,
         mirrorMissingSide: Boolean,
         /** Looser mask; pixels connected through it to the vessel may form a handle. */
-        handleMask: BooleanArray? = null
+        handleMask: BooleanArray? = null,
+        /** Off leaves the outline exactly as traced, with no handle. */
+        detectHandles: Boolean = true
     ): VesselProfile? {
         val visited = BooleanArray(mask.size)
         val queue = IntArray(mask.size)
@@ -220,10 +224,14 @@ object VesselProfileExtractor {
         }
         // Take the handle out before smoothing and mirroring, so its joins do not
         // spread into neighbouring rows or get copied onto the other side.
-        val component = BooleanArray(mask.size)
-        for (index in selected) component[index] = true
-        if (handleMask != null && handleMask.size == mask.size) growThrough(component, handleMask, w, h)
-        val detection = HandleDetector.detect(w, h, component, rows)
+        val detection = if (detectHandles) {
+            val component = BooleanArray(mask.size)
+            for (index in selected) component[index] = true
+            if (handleMask != null && handleMask.size == mask.size) growThrough(component, handleMask, w, h)
+            HandleDetector.detect(w, h, component, rows)
+        } else {
+            HandleDetector.Result(rows, null)
+        }
         val bodyRows = detection.rows
         val smoothed = bodyRows.mapIndexed { index, row ->
             val reach = min(3, min(index, bodyRows.lastIndex - index))

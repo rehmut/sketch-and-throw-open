@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A round shutter key: signal ring around a light key, pressed darker. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <layer-list>
+            <item><shape android:shape="oval"><solid android:color="@color/signal" /></shape></item>
+            <item android:left="6dp" android:top="6dp" android:right="6dp" android:bottom="6dp"><shape android:shape="oval"><solid android:color="@color/key_pressed" /></shape></item>
+        </layer-list>
+    </item>
+    <item android:state_enabled="false">
+        <layer-list>
+            <item><shape android:shape="oval"><solid android:color="@color/scale" /></shape></item>
+            <item android:left="6dp" android:top="6dp" android:right="6dp" android:bottom="6dp"><shape android:shape="oval"><solid android:color="@color/rule" /></shape></item>
+        </layer-list>
+    </item>
+    <item>
+        <layer-list>
+            <item><shape android:shape="oval"><solid android:color="@color/signal" /></shape></item>
+            <item android:left="6dp" android:top="6dp" android:right="6dp" android:bottom="6dp"><shape android:shape="oval"><solid android:color="@color/key" /></shape></item>
+        </layer-list>
+    </item>
+</selector>

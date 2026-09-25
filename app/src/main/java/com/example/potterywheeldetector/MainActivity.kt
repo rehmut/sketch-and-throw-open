@@ -4,39 +4,28 @@ import android.Manifest
 import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.ImageDecoder
 import android.graphics.PointF
 import android.graphics.Rect
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
 import android.text.Editable
-import android.text.Html
 import android.text.TextWatcher
-import android.text.method.LinkMovementMethod
 import android.view.View
 import android.view.WindowInsets
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED
-import androidx.camera.mlkit.vision.MlKitAnalyzer
-import androidx.camera.view.LifecycleCameraController
-import androidx.camera.view.PreviewView
+import androidx.camera.core.ImageProxy
 import androidx.core.content.ContextCompat
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.framework.image.ByteBufferExtractor
@@ -47,7 +36,6 @@ import com.google.mediapipe.tasks.vision.interactivesegmenter.InteractiveSegment
 import com.google.mediapipe.tasks.vision.interactivesegmenter.Stroke
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.objects.ObjectDetection
-import com.google.mlkit.vision.objects.ObjectDetector
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -71,11 +59,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var stepButtons: Map<Step, Button>
 
     // Home, library, camera
-    private lateinit var heroImage: ImageView
-    private lateinit var heroCreditText: TextView
     private lateinit var library: LibraryScreen
-    private lateinit var preview: PreviewView
-    private lateinit var overlay: DetectionOverlay
+    private lateinit var camera: LiveCameraScreen
 
     // Vessel steps
     private lateinit var galleryImage: GalleryOutlineView
@@ -87,6 +72,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var handleControls: View
     private lateinit var handleSideText: TextView
     private lateinit var handleSwitch: Switch
+    private lateinit var detectHandleSwitch: Switch
+    private lateinit var noHandleTitle: TextView
+    private lateinit var noHandleText: TextView
     private lateinit var sectionButtons: Map<HandleSection, Button>
     private lateinit var handleThicknessText: TextView
     private lateinit var handleWidthFader: FaderControl
@@ -104,17 +92,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewerUnits: TextView
     private lateinit var exportButton: Button
 
-    // Settings
-    private lateinit var settingsWall: FaderControl
-    private lateinit var settingsBase: FaderControl
-    private lateinit var settingsTrim: FaderControl
-    private lateinit var applyToOpenSwitch: Switch
+    private lateinit var settings: SettingsScreen
 
     private lateinit var vesselStore: VesselStore
     private lateinit var defaultsStore: ClayDefaultsStore
     private val worker = Executors.newSingleThreadExecutor()
-    private var controller: LifecycleCameraController? = null
-    private var detector: ObjectDetector? = null
     private var interactiveSegmenter: InteractiveSegmenter? = null
 
     private var screen = Screen.HOME
@@ -146,7 +128,7 @@ class MainActivity : ComponentActivity() {
     private val requestCamera = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) startCamera() else setStatus("Camera permission denied. You can still pick a photo.")
+        if (granted) camera.start() else setStatus("Camera permission denied. You can still pick a photo.")
     }
 
     private val pickPhoto = registerForActivityResult(
@@ -201,7 +183,6 @@ class MainActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = goBack()
         })
-        showHeroPhoto()
         show(Screen.HOME)
     }
 
@@ -232,10 +213,6 @@ class MainActivity : ComponentActivity() {
             Step.MEASURE to findViewById(R.id.stepMeasure),
             Step.VIEW_3D to findViewById(R.id.step3d)
         )
-        heroImage = findViewById(R.id.heroImage)
-        heroCreditText = findViewById(R.id.heroCreditText)
-        preview = findViewById(R.id.preview)
-        overlay = findViewById(R.id.overlay)
         galleryImage = findViewById(R.id.galleryImage)
         mlOutlineSwitch = findViewById(R.id.mlOutlineSwitch)
         sensitivity = findViewById(R.id.sensitivity)
@@ -245,6 +222,9 @@ class MainActivity : ComponentActivity() {
         handleControls = findViewById(R.id.handleControls)
         handleSideText = findViewById(R.id.handleSideText)
         handleSwitch = findViewById(R.id.handleSwitch)
+        detectHandleSwitch = findViewById(R.id.detectHandleSwitch)
+        noHandleTitle = findViewById(R.id.noHandleTitle)
+        noHandleText = findViewById(R.id.noHandleText)
         sectionButtons = mapOf(
             HandleSection.ROUND to findViewById(R.id.sectionRound),
             HandleSection.OVAL to findViewById(R.id.sectionOval),
@@ -265,10 +245,6 @@ class MainActivity : ComponentActivity() {
         vessel3dView = findViewById(R.id.vessel3dView)
         viewerUnits = findViewById(R.id.viewerUnits)
         exportButton = findViewById(R.id.exportButton)
-        settingsWall = findViewById(R.id.settingsWall)
-        settingsBase = findViewById(R.id.settingsBase)
-        settingsTrim = findViewById(R.id.settingsTrim)
-        applyToOpenSwitch = findViewById(R.id.applyToOpenSwitch)
     }
 
     private fun bindHeaderAndHome() {
@@ -281,7 +257,6 @@ class MainActivity : ComponentActivity() {
                 else -> Unit
             }
         }
-        heroImage.clipToOutline = true
         findViewById<View>(R.id.myVesselsButton).setOnClickListener { show(Screen.LIBRARY) }
         findViewById<View>(R.id.allVesselsLink).setOnClickListener { show(Screen.LIBRARY) }
         findViewById<View>(R.id.liveButton).setOnClickListener { showCamera() }
@@ -290,6 +265,9 @@ class MainActivity : ComponentActivity() {
         }
         stepButtons.forEach { (target, button) -> button.setOnClickListener { showStep(target) } }
         exportButton.setOnClickListener { saveObj.launch("pottery-vessel.obj") }
+        camera = LiveCameraScreen(this, findViewById(R.id.preview), findViewById(R.id.overlay),
+            findViewById(R.id.shutterButton), isVisible = { screen == Screen.CAMERA },
+            onStatus = ::setStatus, onCaptured = ::tracePicture)
     }
 
     private fun bindOutlineStep() {
@@ -308,8 +286,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bindHandleStep() {
-        handleSwitch.setOnCheckedChangeListener { _, checked ->
-            if (!syncingControls) updateHandleOptions(handleOptions.copy(enabled = checked))
+        listOf(handleSwitch, detectHandleSwitch).forEach { toggle ->
+            toggle.setOnCheckedChangeListener { _, checked ->
+                if (!syncingControls) setHandleDetection(checked)
+            }
         }
         sectionButtons.forEach { (section, button) ->
             button.setOnClickListener { updateHandleOptions(handleOptions.copy(section = section)) }
@@ -329,24 +309,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bindSettings() {
-        settingsWall.formatter = { "${VesselReadout.millimetres(it)} mm" }
-        settingsBase.formatter = { "${VesselReadout.millimetres(it)} mm" }
-        listOf(settingsWall, settingsBase, settingsTrim).forEach { fader ->
-            fader.onValueChange = { _, fromUser -> if (fromUser && !syncingControls) settingsChanged() }
-        }
-        applyToOpenSwitch.setOnCheckedChangeListener { _, checked ->
-            if (checked && !syncingControls) settingsChanged()
-        }
-        findViewById<View>(R.id.resetDefaultsButton).setOnClickListener {
-            showSettingsValues(ClayDefaults())
-            settingsChanged()
+        settings = SettingsScreen(findViewById(R.id.settingsPanel), defaultsStore) { values ->
+            wallMm = values.wallMm
+            baseMm = values.baseMm
+            allowancePercent = values.allowancePercent
+            updateMeasurements()
         }
     }
 
     // Navigation
 
     private fun show(target: Screen) {
-        if (target != Screen.CAMERA) controller?.unbind()
+        if (target != Screen.CAMERA) camera.stop()
         screen = target
         panels.forEach { (key, panel) -> panel.visibility = if (key == target) View.VISIBLE else View.GONE }
         val home = target == Screen.HOME
@@ -409,16 +383,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun showHeroPhoto() {
-        heroImage.setImageResource(R.drawable.hero_bowl)
-        heroCreditText.text = Html.fromHtml(
-            "photo: <a href=\"https://commons.wikimedia.org/wiki/File:Light_green_ceramic_bowl_1.jpg\">W.carter</a> · " +
-                "<a href=\"https://creativecommons.org/licenses/by-sa/4.0/\">CC BY-SA 4.0</a> · display cropped",
-            Html.FROM_HTML_MODE_LEGACY
-        )
-        heroCreditText.movementMethod = LinkMovementMethod.getInstance()
-    }
-
     // Live camera
 
     private fun showCamera() {
@@ -429,84 +393,36 @@ class MainActivity : ComponentActivity() {
             requestCamera.launch(Manifest.permission.CAMERA)
             return
         }
-        startCamera()
-    }
-
-    private fun startCamera() {
-        if (controller != null) {
-            try {
-                controller?.bindToLifecycle(this)
-                setStatus("Looking for an object…")
-            } catch (error: Exception) {
-                setStatus("Could not start camera: ${error.localizedMessage ?: "unknown error"}")
-            }
-            return
-        }
-        val objectDetector = ObjectDetection.getClient(
-            ObjectDetectorOptions.Builder()
-                .setDetectorMode(ObjectDetectorOptions.STREAM_MODE)
-                .build()
-        )
-        detector = objectDetector
-        val cameraController = LifecycleCameraController(this)
-        cameraController.cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-        cameraController.setEnabledUseCases(LifecycleCameraController.IMAGE_ANALYSIS)
-        val mainExecutor = ContextCompat.getMainExecutor(this)
-        cameraController.setImageAnalysisAnalyzer(
-            mainExecutor,
-            MlKitAnalyzer(listOf(objectDetector), COORDINATE_SYSTEM_VIEW_REFERENCED,
-                mainExecutor) { result ->
-                if (screen != Screen.CAMERA) return@MlKitAnalyzer
-                val error = result?.getThrowable(objectDetector)
-                if (error != null) {
-                    overlay.showBoxes(emptyList())
-                    setStatus("Detection error: ${error.localizedMessage ?: "unknown error"}")
-                    return@MlKitAnalyzer
-                }
-                val objects = result?.getValue(objectDetector).orEmpty()
-                overlay.showBoxes(objects.map { RectF(it.boundingBox) })
-                setStatus(if (objects.isEmpty()) "Looking for an object…"
-                else "Tracking ${objects.size} visible object${if (objects.size == 1) "" else "s"}")
-            }
-        )
-        preview.controller = cameraController
-        try {
-            cameraController.bindToLifecycle(this)
-            controller = cameraController
-            setStatus("Looking for an object…")
-        } catch (error: Exception) {
-            cameraController.clearImageAnalysisAnalyzer()
-            objectDetector.close()
-            detector = null
-            setStatus("Could not start camera: ${error.localizedMessage ?: "unknown error"}")
-        }
+        camera.start()
     }
 
     // Photo to profile
 
     private fun loadPhoto(uri: Uri) {
+        startPhoto("Opening photo…") { PhotoInput.fromUri(contentResolver, uri) }
+    }
+
+    /** A still from the live camera, traced like a picked photo. */
+    private fun tracePicture(image: ImageProxy) {
+        if (isDestroyed || worker.isShutdown) {
+            image.close()
+            return
+        }
+        startPhoto("Reading picture…") { PhotoInput.fromCapture(image) }
+    }
+
+    /** Resets to a new vessel and traces the bitmap [decode] produces on the worker. */
+    private fun startPhoto(message: String, decode: () -> Bitmap) {
         photoVersion++
         extractionVersion++
         val version = photoVersion
         resetVessel(defaultsStore.load())
         step = Step.OUTLINE
         show(Screen.VESSEL)
-        setStatus("Opening photo…")
+        setStatus(message)
         worker.execute {
             try {
-                val decoded = if (Build.VERSION.SDK_INT >= 28) {
-                    val source = ImageDecoder.createSource(contentResolver, uri)
-                    ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
-                        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                    }
-                } else {
-                    @Suppress("DEPRECATION")
-                    MediaStore.Images.Media.getBitmap(contentResolver, uri)
-                }
-                val ratio = 768f / maxOf(decoded.width, decoded.height)
-                val bitmap = if (ratio < 1f) Bitmap.createScaledBitmap(decoded,
-                    (decoded.width * ratio).toInt(), (decoded.height * ratio).toInt(), true)
-                else decoded
+                val bitmap = decode()
                 runOnUiThread {
                     if (version != photoVersion || isDestroyed) return@runOnUiThread
                     photo = bitmap
@@ -539,7 +455,8 @@ class MainActivity : ComponentActivity() {
         wallMm = defaults.wallMm
         baseMm = defaults.baseMm
         allowancePercent = defaults.allowancePercent
-        handleOptions = HandleOptions()
+        // Off until asked for: detection has nothing to find on bowls and vases.
+        handleOptions = HandleOptions(enabled = false)
         galleryImage.bitmap = null
         galleryImage.seed = null
         heightInput.setText("")
@@ -633,14 +550,15 @@ class MainActivity : ComponentActivity() {
         val selectedPoint = seed?.let { PointF(it.x, it.y) }
         val level = sensitivity.value.toInt()
         val confidence = if (mlOutlineSwitch.isChecked) mlConfidence else null
+        val findHandle = handleOptions.enabled
         setStatus("Tracing outline…")
         worker.execute {
             val mlProfile = confidence?.let {
                 VesselProfileExtractor.extractFromConfidence(image.width, image.height,
-                    it, target, selectedPoint, level)
+                    it, target, selectedPoint, level, findHandle)
             }
             val traced = mlProfile ?: VesselProfileExtractor.extract(
-                image, target, selectedPoint, level)
+                image, target, selectedPoint, level, findHandle)
             runOnUiThread {
                 if (photoId != photoVersion || runId != extractionVersion || isDestroyed)
                     return@runOnUiThread
@@ -677,27 +595,45 @@ class MainActivity : ComponentActivity() {
         updateMeasurements()
     }
 
+    /** Detection changes the traced outline itself, so switching it retraces the photo. */
+    private fun setHandleDetection(on: Boolean) {
+        handleOptions = handleOptions.copy(enabled = on)
+        renderHandleStep()
+        val image = photo ?: return
+        if (mlOutlineSwitch.isChecked) requestMlOutline(image, photoVersion)
+        runExtraction()
+    }
+
     private fun renderHandleStep() {
         val handle = profile?.handle
-        noHandleCard.visibility = if (handle == null) View.VISIBLE else View.GONE
-        handleControls.visibility = if (handle == null) View.GONE else View.VISIBLE
-        handleView.handleEnabled = handleOptions.enabled
-        galleryImage.showHandle = handleOptions.enabled
-        profileView.showHandle = handleOptions.enabled
-        if (handle == null) return
+        val on = handleOptions.enabled
         syncingControls = true
-        handleSwitch.isChecked = handleOptions.enabled
+        handleSwitch.isChecked = on
+        detectHandleSwitch.isChecked = on
         handleWidthFader.value = handleOptions.widthMm
         syncingControls = false
+        noHandleCard.visibility = if (handle == null) View.VISIBLE else View.GONE
+        handleControls.visibility = if (handle == null) View.GONE else View.VISIBLE
+        handleView.handleEnabled = on
+        galleryImage.showHandle = on
+        profileView.showHandle = on
+        if (handle == null) {
+            handleSideText.text = if (on) "on · none found yet" else "off"
+            noHandleTitle.text = if (on) "no handle found" else "handle detection is off"
+            noHandleText.text = if (on)
+                "the body is modelled on its own. photograph the vessel side-on so the handle " +
+                    "sticks out to the left or right, then tap it in 01 outline."
+            else "switch it on for mugs and cups. bowls, vases and jars are modelled from the body alone."
+            return
+        }
         handleSideText.text = "traced on the ${handle.side.name.lowercase()} · " +
             if (handle.hasEye) "open handle" else "solid lug"
         sectionButtons.forEach { (section, button) ->
             button.isSelected = section == handleOptions.section
             button.setTextColor(getColor(if (button.isSelected) R.color.key else R.color.graphite_soft))
             button.compoundDrawableTintList = button.textColors
-            button.isEnabled = handleOptions.enabled
         }
-        handleWidthFader.isEnabled = handleOptions.enabled && handleOptions.section != HandleSection.ROUND
+        handleWidthFader.isEnabled = handleOptions.section != HandleSection.ROUND
         handleWidthFader.setLabel(if (handleOptions.section == HandleSection.ROUND)
             "width · same as thickness for round" else "width front to back · assumed")
     }
@@ -790,36 +726,8 @@ class MainActivity : ComponentActivity() {
 
     private fun openSettings(fromVessel: Boolean) {
         settingsReturn = if (screen == Screen.SETTINGS) settingsReturn else screen
-        val vesselOpen = profile != null
-        syncingControls = true
-        applyToOpenSwitch.isEnabled = vesselOpen
-        applyToOpenSwitch.isChecked = fromVessel && vesselOpen
-        syncingControls = false
-        showSettingsValues(if (fromVessel && vesselOpen)
-            ClayDefaults(wallMm, baseMm, allowancePercent) else defaultsStore.load())
-        findViewById<TextView>(R.id.applyToOpenHint).text = if (vesselOpen)
-            "otherwise only new vessels change" else "no vessel open"
+        settings.open(profile?.let { ClayDefaults(wallMm, baseMm, allowancePercent) }, fromVessel)
         show(Screen.SETTINGS)
-    }
-
-    private fun showSettingsValues(values: ClayDefaults) {
-        syncingControls = true
-        settingsWall.value = values.wallMm
-        settingsBase.value = values.baseMm
-        settingsTrim.value = values.allowancePercent
-        syncingControls = false
-    }
-
-    /** Sliders always set the defaults; with the switch on they also change the open vessel. */
-    private fun settingsChanged() {
-        val values = ClayDefaults(settingsWall.value, settingsBase.value, settingsTrim.value).clamped()
-        defaultsStore.save(values)
-        if (applyToOpenSwitch.isChecked && profile != null) {
-            wallMm = values.wallMm
-            baseMm = values.baseMm
-            allowancePercent = values.allowancePercent
-            updateMeasurements()
-        }
     }
 
     // Library
@@ -827,42 +735,21 @@ class MainActivity : ComponentActivity() {
     private fun saveVesselDialog() {
         val bitmap = photo ?: return
         val traced = profile ?: return
-        val folders = vesselStore.folders()
-        val previous = vesselStore.find(currentSavedId)
-        val density = resources.displayMetrics.density
-        val form = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding((20 * density).toInt(), (8 * density).toInt(), (20 * density).toInt(), 0)
-        }
-        val nameInput = EditText(this).apply {
-            hint = "vessel name"
-            setText(previous?.name ?: vesselName ?: "Untitled vessel")
-            selectAll()
-        }
-        val folderSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
-                folders.map { it.name })
-            val index = folders.indexOfFirst { it.id == previous?.folderId }
-            if (index >= 0) setSelection(index)
-        }
-        form.addView(nameInput)
-        form.addView(folderSpinner)
-        AlertDialog.Builder(this).setTitle(if (previous == null) "Save vessel" else "Update vessel")
-            .setView(form).setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ ->
-                try {
-                    val folder = folders[folderSpinner.selectedItemPosition]
-                    val entry = vesselStore.save(currentSavedId, folder.id,
-                        nameInput.text.toString(), bitmap, traced, enteredHeight(),
-                        wallMm, allowancePercent, baseMm, handleOptions)
-                    currentSavedId = entry.id
-                    vesselName = entry.name
-                    titleText.text = entry.name
-                    setStatus("Saved ${entry.name} in ${folder.name}.")
-                } catch (error: Exception) {
-                    setStatus("Could not save vessel: ${error.localizedMessage ?: "unknown error"}")
-                }
-            }.show()
+        SaveVesselDialog(this, vesselStore.folders(), vesselStore.find(currentSavedId),
+            vesselName ?: "Untitled vessel",
+            VesselCategory.suggest(traced, handleOptions.enabled)
+        ) { name, category, folder ->
+            try {
+                val entry = vesselStore.save(currentSavedId, folder.id, name, bitmap, traced,
+                    enteredHeight(), wallMm, allowancePercent, baseMm, handleOptions, category)
+                currentSavedId = entry.id
+                vesselName = entry.name
+                titleText.text = entry.name
+                setStatus("Saved ${entry.name} as a ${category.label} in ${folder.name}.")
+            } catch (error: Exception) {
+                setStatus("Could not save vessel: ${error.localizedMessage ?: "unknown error"}")
+            }
+        }.show()
     }
 
     private fun openSavedVessel(entry: SavedVessel) {
@@ -887,9 +774,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        controller?.clearImageAnalysisAnalyzer()
-        controller?.unbind()
-        detector?.close()
+        camera.release()
         worker.shutdownNow()
         interactiveSegmenter?.close()
         super.onDestroy()

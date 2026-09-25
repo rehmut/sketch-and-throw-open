@@ -75,6 +75,14 @@ class HandleDetectorTest {
         assertEquals(bodyLeft - 37.5f, handle.path.minOf { it.x }, 5f)
     }
 
+    @Test fun switchedOffDetectionLeavesTheOutlineAlone() {
+        val profile = VesselProfileExtractor.extractFromMask(w, h, mask(body, ringHandle(bodyRight, 1)),
+            null, null, mirrorMissingSide = false, detectHandles = false)!!
+        assertNull(profile.handle)
+        // Without detection the join rows keep their raw, handle-wide extent.
+        assertTrue(profile.rows.first { it.y.toInt() == 82 }.right > bodyRight + 15f)
+    }
+
     @Test fun plainCylinderHasNoHandle() {
         val profile = profileOf(mask(body))!!
         assertNull(profile.handle)

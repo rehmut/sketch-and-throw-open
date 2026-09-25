@@ -52,13 +52,14 @@
             android:layout_height="match_parent" android:orientation="vertical"
             android:padding="@dimen/gutter">
             <ImageView android:id="@+id/heroImage" android:layout_width="match_parent"
-                android:layout_height="0dp" android:layout_weight="1" android:scaleType="centerCrop"
-                android:background="@drawable/bg_display"
-                android:contentDescription="Light green ceramic bowl" />
-            <TextView android:id="@+id/heroCreditText" style="@style/Label"
+                android:layout_height="0dp" android:layout_weight="1" android:scaleType="fitCenter"
+                android:background="@drawable/bg_panel_dim" android:padding="28dp"
+                android:src="@drawable/hero_illustration"
+                android:contentDescription="Line drawing of a vase, a bowl and a mug on a shelf" />
+            <TextView style="@style/Label"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:paddingTop="8dp" android:fontFamily="monospace" android:textSize="11sp"
-                android:textColorLink="@color/graphite_soft" />
+                android:text="photograph · trace · measure · weigh the clay" />
             <View android:layout_width="match_parent" android:layout_height="1dp"
                 android:layout_marginTop="14dp" android:background="@color/rule" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -120,6 +121,20 @@
                 app:scaleType="fillCenter" />
             <com.example.potterywheeldetector.DetectionOverlay android:id="@+id/overlay"
                 android:layout_width="match_parent" android:layout_height="match_parent" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_gravity="bottom" android:gravity="center_horizontal"
+                android:orientation="vertical" android:paddingBottom="24dp">
+                <TextView style="@style/Label" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:background="@drawable/bg_chip"
+                    android:fontFamily="monospace" android:paddingLeft="8dp" android:paddingRight="8dp"
+                    android:paddingTop="4dp" android:paddingBottom="4dp"
+                    android:textColor="@color/graphite" android:textSize="11sp"
+                    android:text="one pot, side-on, plain background" />
+                <ImageButton android:id="@+id/shutterButton" android:layout_width="76dp"
+                    android:layout_height="76dp" android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_shutter" android:src="@drawable/ic_camera"
+                    android:contentDescription="Take picture and trace the vessel" />
+            </LinearLayout>
         </FrameLayout>
 
         <!-- Vessel: four steps under one rocker switch -->
@@ -175,6 +190,21 @@
                                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                                 android:checked="true" android:contentDescription="Use ML outline" />
                         </LinearLayout>
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/gap" android:orientation="horizontal"
+                            android:gravity="center_vertical">
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                                android:layout_weight="1" android:orientation="vertical">
+                                <TextView style="@style/Body" android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium" android:text="find a handle" />
+                                <TextView style="@style/Label" android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" android:text="on for mugs and cups" />
+                            </LinearLayout>
+                            <Switch android:id="@+id/detectHandleSwitch" style="@style/BraunSwitch"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:contentDescription="Find a handle" />
+                        </LinearLayout>
                         <com.example.potterywheeldetector.FaderControl android:id="@+id/sensitivity"
                             android:layout_width="match_parent" android:layout_height="wrap_content"
                             android:layout_marginTop="@dimen/gap_large"
@@ -214,34 +244,33 @@
                                 android:layout_width="match_parent" android:layout_height="match_parent"
                                 android:background="@drawable/bg_panel" />
                         </FrameLayout>
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/gap_large" android:orientation="horizontal"
+                            android:gravity="center_vertical">
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                                android:layout_weight="1" android:orientation="vertical">
+                                <TextView style="@style/Body" android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium" android:text="find a handle" />
+                                <TextView android:id="@+id/handleSideText" style="@style/Label"
+                                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                            </LinearLayout>
+                            <Switch android:id="@+id/handleSwitch" style="@style/BraunSwitch"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:contentDescription="Find a handle" />
+                        </LinearLayout>
                         <LinearLayout android:id="@+id/noHandleCard" android:layout_width="match_parent"
                             android:layout_height="wrap_content" android:layout_marginTop="@dimen/gap_large"
                             android:background="@drawable/bg_panel" android:orientation="vertical"
                             android:padding="14dp" android:visibility="gone">
-                            <TextView style="@style/Title" android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" android:text="no handle found" />
-                            <TextView style="@style/Label" android:layout_width="match_parent"
-                                android:layout_height="wrap_content" android:layout_marginTop="4dp"
-                                android:lineSpacingMultiplier="1.3"
-                                android:text="the body is modelled on its own. to add a handle, photograph the vessel side-on so the handle sticks out to the left or right, then retrace in 01 outline." />
+                            <TextView android:id="@+id/noHandleTitle" style="@style/Title"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                            <TextView android:id="@+id/noHandleText" style="@style/Label"
+                                android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp" android:lineSpacingMultiplier="1.3" />
                         </LinearLayout>
                         <LinearLayout android:id="@+id/handleControls" android:layout_width="match_parent"
                             android:layout_height="wrap_content" android:orientation="vertical">
-                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/gap_large" android:orientation="horizontal"
-                                android:gravity="center_vertical">
-                                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                                    android:layout_weight="1" android:orientation="vertical">
-                                    <TextView style="@style/Body" android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:fontFamily="sans-serif-medium" android:text="handle" />
-                                    <TextView android:id="@+id/handleSideText" style="@style/Label"
-                                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                                </LinearLayout>
-                                <Switch android:id="@+id/handleSwitch" style="@style/BraunSwitch"
-                                    android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                    android:checked="true" android:contentDescription="Model the handle" />
-                            </LinearLayout>
                             <TextView style="@style/Label" android:layout_width="wrap_content"
                                 android:layout_height="wrap_content" android:layout_marginTop="@dimen/gap_large"
                                 android:text="cross-section" />
