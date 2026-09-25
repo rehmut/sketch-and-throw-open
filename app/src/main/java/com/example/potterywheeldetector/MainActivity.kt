@@ -171,8 +171,12 @@ class MainActivity : ComponentActivity() {
         defaultsStore = ClayDefaultsStore(this)
         bindViews()
         library = LibraryScreen(this, vesselStore, findViewById(R.id.libraryContent),
-            findViewById(R.id.recentRow), findViewById(R.id.recentEmpty),
+            findViewById(R.id.categoryRow), findViewById(R.id.recentRow), findViewById(R.id.recentEmpty),
             onOpen = ::openSavedVessel,
+            onOpenCategory = { category ->
+                library.showCategory(category)
+                show(Screen.LIBRARY)
+            },
             onDeleted = { id -> if (currentSavedId == id) currentSavedId = null },
             onStatus = ::setStatus)
         bindHeaderAndHome()
@@ -342,7 +346,10 @@ class MainActivity : ComponentActivity() {
         headerAction.text = if (target == Screen.LIBRARY) "+ folder" else "save"
         headerAction.isEnabled = target != Screen.VESSEL || profile != null
         when (target) {
-            Screen.HOME -> library.renderRecent()
+            Screen.HOME -> {
+                library.renderCategories()
+                library.renderRecent()
+            }
             Screen.LIBRARY -> {
                 library.render()
                 setStatus("Choose a saved vessel or create a folder.")
@@ -735,9 +742,20 @@ class MainActivity : ComponentActivity() {
     private fun saveVesselDialog() {
         val bitmap = photo ?: return
         val traced = profile ?: return
-        SaveVesselDialog(this, vesselStore.folders(), vesselStore.find(currentSavedId),
-            vesselName ?: "Untitled vessel",
-            VesselCategory.suggest(traced, handleOptions.enabled)
+        val saved = vesselStore.find(currentSavedId)
+        SaveVesselDialog(this, vesselStore.folders(), saved, vesselName,
+            VesselCategory.suggest(traced, handleOptions.enabled),
+            numberedName = { category ->
+                category.defaultName(vesselStore.recent(Int.MAX_VALUE).count { it.category == category })
+            },
+            onDelete = saved?.let { entry ->
+                {
+                    library.confirmDelete(entry) {
+                        resetVessel(defaultsStore.load())
+                        show(Screen.HOME)
+                    }
+                }
+            }
         ) { name, category, folder ->
             try {
                 val entry = vesselStore.save(currentSavedId, folder.id, name, bitmap, traced,

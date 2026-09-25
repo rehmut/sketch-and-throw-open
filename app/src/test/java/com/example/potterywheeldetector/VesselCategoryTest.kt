@@ -43,6 +43,17 @@ class VesselCategoryTest {
         assertEquals(VesselCategory.JAR, VesselCategory.suggest(jar))
     }
 
+    @Test fun bowlWhoseRimTapersInThePhotoIsStillABowl() {
+        // The rim is an ellipse seen nearly edge-on: the top rows narrow to a point.
+        val bowl = shape(70) { t -> if (t < 0.06f) 30f + 1100f * t else 100f - 45f * t }
+        assertEquals(VesselCategory.BOWL, VesselCategory.suggest(bowl))
+    }
+
+    @Test fun defaultNamesCountUpWithinACategory() {
+        assertEquals("mug 01", VesselCategory.MUG.defaultName(0))
+        assertEquals("mug 03", VesselCategory.MUG.defaultName(2))
+    }
+
     @Test fun unknownStoredNamesFallBackToNothing() {
         assertEquals(VesselCategory.MUG, VesselCategory.fromName("MUG"))
         assertNull(VesselCategory.fromName("TEAPOT"))

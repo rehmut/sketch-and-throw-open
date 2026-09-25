@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The wireframe hero panel: a warm stone grey behind the bowl drawing. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#CFCAC0" /><corners android:radius="@dimen/radius_panel" /></shape>

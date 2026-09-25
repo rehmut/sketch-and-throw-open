@@ -14,14 +14,20 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Builds the vessel library and the home screen's recent row from [VesselStore]. */
+/**
+ * Builds the vessel library and the home screen's category and recent rows
+ * from [VesselStore]. Each saved design is drawn from its own traced outline.
+ */
 class LibraryScreen(
     private val activity: Activity,
     private val store: VesselStore,
     private val content: LinearLayout,
+    private val categoryRow: LinearLayout,
     private val recentRow: LinearLayout,
     private val recentEmpty: View,
     private val onOpen: (SavedVessel) -> Unit,
+    /** Called with a category to show all of its designs in the library. */
+    private val onOpenCategory: (VesselCategory) -> Unit,
     private val onDeleted: (id: String) -> Unit,
     private val onStatus: (String) -> Unit
 ) {
@@ -46,6 +52,39 @@ class LibraryScreen(
                 setPadding(0, 2.dp, 0, 10.dp)
             })
             saved.forEach { content.addView(vesselRow(it)) }
+        }
+    }
+
+    /** Shows only [category] the next time the library renders. */
+    fun showCategory(category: VesselCategory) {
+        filterCategory = category
+    }
+
+    /** One illustrated key per category, with how many designs it holds. */
+    fun renderCategories() {
+        categoryRow.removeAllViews()
+        val counts = store.recent(Int.MAX_VALUE).groupingBy { it.category }.eachCount()
+        VesselCategory.entries.forEachIndexed { index, category ->
+            val count = counts[category] ?: 0
+            val key = Button(activity, null, 0, R.style.Key).apply {
+                background = activity.getDrawable(R.drawable.bg_key_choice)
+                text = String.format("%s  %02d", category.label, count)
+                textSize = 12f
+                minHeight = 0
+                minimumHeight = 0
+                setCompoundDrawablesWithIntrinsicBounds(0, category.illustration, 0, 0)
+                compoundDrawableTintList = null
+                compoundDrawablePadding = 2.dp
+                setPadding(6.dp, 8.dp, 6.dp, 10.dp)
+                alpha = if (count == 0) 0.55f else 1f
+                contentDescription = "${category.label}, $count saved"
+                setOnClickListener {
+                    if (count == 0) onStatus("No ${category.label}s saved yet.")
+                    else onOpenCategory(category)
+                }
+            }
+            categoryRow.addView(key, LinearLayout.LayoutParams(84.dp, ViewGroup.LayoutParams.WRAP_CONTENT)
+                .apply { if (index > 0) leftMargin = 6.dp })
         }
     }
 
@@ -180,29 +219,32 @@ class LibraryScreen(
                 setTextColor(activity.getColor(R.color.graphite))
             })
             addView(ImageButton(activity, null, 0, R.style.IconButton).apply {
-                setImageResource(R.drawable.ic_more)
-                contentDescription = "Options for ${entry.name}"
+                setImageResource(R.drawable.ic_delete)
+                contentDescription = "Delete ${entry.name}"
                 setOnClickListener { confirmDelete(entry) }
             }, LinearLayout.LayoutParams(48.dp, 48.dp))
+            setOnLongClickListener {
+                confirmDelete(entry)
+                true
+            }
         }.also { row ->
             row.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8.dp }
         }
     }
 
-    private fun confirmDelete(entry: SavedVessel) {
-        AlertDialog.Builder(activity).setTitle(entry.name)
-            .setItems(arrayOf("Open", "Delete")) { _, choice ->
-                if (choice == 0) onOpen(entry) else AlertDialog.Builder(activity)
-                    .setTitle("Delete ${entry.name}?")
-                    .setMessage("This removes the saved photo and vessel profile from the app.")
-                    .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Delete") { _, _ ->
-                        store.delete(entry.id)
-                        onDeleted(entry.id)
-                        render()
-                        renderRecent()
-                    }.show()
+    fun confirmDelete(entry: SavedVessel, afterDelete: () -> Unit = {}) {
+        AlertDialog.Builder(activity).setTitle("Delete ${entry.name}?")
+            .setMessage("This removes the saved photo and outline from the app. It cannot be undone.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Delete") { _, _ ->
+                store.delete(entry.id)
+                onDeleted(entry.id)
+                render()
+                renderRecent()
+                renderCategories()
+                onStatus("Deleted ${entry.name}.")
+                afterDelete()
             }.show()
     }
 
@@ -244,9 +286,9 @@ class LibraryScreen(
             }.show()
     }
 
-    /** The category's line illustration; the photo stays stored for retracing. */
+    /** The design's own outline as a line drawing; the photo stays stored for retracing. */
     private fun thumbnail(entry: SavedVessel) = ImageView(activity).apply {
-        setImageResource(entry.category.illustration)
+        setImageDrawable(OutlineDrawable(activity, entry.profile, entry.handleOptions.enabled))
         scaleType = ImageView.ScaleType.FIT_CENTER
         background = activity.getDrawable(R.drawable.bg_thumb)
         setPadding(4.dp, 4.dp, 4.dp, 4.dp)

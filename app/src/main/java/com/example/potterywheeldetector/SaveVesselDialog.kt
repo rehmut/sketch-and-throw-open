@@ -13,31 +13,42 @@ import android.widget.TextView
 
 /**
  * Name, category and folder for a vessel. The category starts at [suggested]
- * (or the saved one) and is picked from illustrated keys.
+ * (or the saved one) and is picked from illustrated keys. A new vessel gets a
+ * numbered name for its category ("mug 03") that follows the picked category
+ * until the user types their own. A saved vessel can also be deleted here.
  */
 internal class SaveVesselDialog(
     private val activity: Activity,
     private val folders: List<VesselFolder>,
     private val previous: SavedVessel?,
-    private val defaultName: String,
+    /** A name already given this session, kept instead of a numbered one. */
+    private val givenName: String?,
     private val suggested: VesselCategory,
+    private val numberedName: (VesselCategory) -> String,
+    private val onDelete: (() -> Unit)?,
     private val onSave: (name: String, category: VesselCategory, folder: VesselFolder) -> Unit
 ) {
     private val density = activity.resources.displayMetrics.density
     private val Int.dp: Int get() = (this * density).toInt()
     private var category = previous?.category ?: suggested
     private val categoryKeys = mutableMapOf<VesselCategory, Button>()
+    private var nameInput: EditText? = null
+    /** The numbered name last filled in; replaced on a category change unless edited. */
+    private var autoName: String? = null
 
     fun show() {
         val form = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(20.dp, 8.dp, 20.dp, 0)
         }
+        val fixedName = previous?.name ?: givenName
+        autoName = if (fixedName == null) numberedName(category) else null
         val nameInput = EditText(activity).apply {
             hint = "vessel name"
-            setText(previous?.name ?: defaultName)
+            setText(fixedName ?: autoName)
             selectAll()
         }
+        this.nameInput = nameInput
         val folderSpinner = Spinner(activity).apply {
             adapter = ArrayAdapter(activity, android.R.layout.simple_spinner_dropdown_item,
                 folders.map { it.name })
@@ -49,11 +60,14 @@ internal class SaveVesselDialog(
         form.addView(categoryPicker())
         form.addView(label("folder"))
         form.addView(folderSpinner)
-        AlertDialog.Builder(activity).setTitle(if (previous == null) "Save vessel" else "Update vessel")
+        val builder = AlertDialog.Builder(activity)
+            .setTitle(if (previous == null) "Save vessel" else "Update vessel")
             .setView(form).setNegativeButton("Cancel", null)
             .setPositiveButton("Save") { _, _ ->
                 onSave(nameInput.text.toString(), category, folders[folderSpinner.selectedItemPosition])
-            }.show()
+            }
+        onDelete?.let { delete -> builder.setNeutralButton("Delete") { _, _ -> delete() } }
+        builder.show()
     }
 
     /** All six categories at once, three to a row, so none hides off screen. */
@@ -88,6 +102,13 @@ internal class SaveVesselDialog(
 
     private fun select(option: VesselCategory) {
         category = option
+        nameInput?.let { input ->
+            if (autoName != null && input.text.toString() == autoName) {
+                autoName = numberedName(option)
+                input.setText(autoName)
+                input.selectAll()
+            }
+        }
         categoryKeys.forEach { (key, button) ->
             button.isSelected = key == option
             button.contentDescription = if (key == option) "${key.label}, selected" else key.label
