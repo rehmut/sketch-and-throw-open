@@ -1,9 +1,108 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:fontFamily">sans</item>
-        <item name="android:statusBarColor">#FFFFFF</item>
-        <item name="android:navigationBarColor">#1C1714</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowBackground">@color/housing</item>
+        <item name="android:colorAccent">@color/signal</item>
+        <item name="android:colorPrimary">@color/graphite</item>
+        <item name="android:textColorPrimary">@color/graphite</item>
+        <item name="android:textColorHighlight">#55D4541C</item>
+        <item name="android:statusBarColor">@color/housing</item>
+        <item name="android:navigationBarColor">@color/graphite</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:alertDialogTheme">@style/Dialog</item>
+    </style>
+
+    <style name="Dialog" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:colorAccent">@color/graphite</item>
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:textColorPrimary">@color/graphite</item>
+    </style>
+
+    <!-- Lower-case labels in the small grey of a product's printed scale. -->
+    <style name="Label">
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.05</item>
+        <item name="android:textColor">@color/label</item>
+    </style>
+
+    <style name="Title">
+        <item name="android:textSize">17sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/graphite</item>
+    </style>
+
+    <style name="Body">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/graphite</item>
+    </style>
+
+    <style name="Readout">
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/graphite</item>
+    </style>
+
+    <style name="Key">
+        <item name="android:background">@drawable/bg_key</item>
+        <item name="android:textColor">@color/graphite_soft</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">64dp</item>
+        <item name="android:drawableTint">@color/graphite_soft</item>
+        <item name="android:drawablePadding">6dp</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <style name="Key.Primary">
+        <item name="android:background">@drawable/bg_key_primary</item>
+        <item name="android:textColor">@color/key</item>
+        <item name="android:drawableTint">@color/key</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Ghost">
+        <item name="android:background">@drawable/bg_ghost</item>
+        <item name="android:textColor">@color/graphite</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingLeft">14dp</item>
+        <item name="android:paddingRight">14dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <style name="RockerItem">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:background">@drawable/bg_rocker_item</item>
+        <item name="android:textColor">@color/rocker_text</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:padding">0dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <style name="IconButton">
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:background">@drawable/bg_icon_button</item>
+        <item name="android:tint">@color/graphite</item>
+        <item name="android:scaleType">center</item>
+    </style>
+
+    <style name="BraunSwitch">
+        <item name="android:thumb">@drawable/switch_thumb</item>
+        <item name="android:track">@drawable/switch_track</item>
+        <item name="android:switchMinWidth">60dp</item>
+        <item name="android:showText">false</item>
+        <item name="android:minHeight">48dp</item>
     </style>
 </resources>

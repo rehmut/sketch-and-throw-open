@@ -25,6 +25,7 @@ class Vessel3DView(context: Context, attrs: AttributeSet?) : View(context, attrs
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        canvas.drawColor(context.getColor(R.color.graphite))
         val shape = mesh ?: return
         val cy = cos(yaw)
         val sy = sin(yaw)
@@ -69,8 +70,11 @@ class Vessel3DView(context: Context, attrs: AttributeSet?) : View(context, attrs
             val light = ((nx * -0.3f + ny * 0.5f + nz * 0.85f) / length)
                 .coerceIn(-1f, 1f)
             val shade = (0.55f + 0.37f * light).coerceIn(0.25f, 1f)
-            val clay = if (face.interior) intArrayOf(154, 101, 70) else
-                intArrayOf(197, 129, 84)
+            val clay = when {
+                face.part == MeshPart.HANDLE -> HANDLE_TONE
+                face.interior -> INTERIOR_TONE
+                else -> BODY_TONE
+            }
             DrawFace(points.map { it.z }.average().toFloat(), path,
                 Color.rgb((clay[0] * shade).toInt(), (clay[1] * shade).toInt(),
                     (clay[2] * shade).toInt()))
@@ -108,5 +112,12 @@ class Vessel3DView(context: Context, attrs: AttributeSet?) : View(context, attrs
     override fun performClick(): Boolean {
         super.performClick()
         return true
+    }
+
+    private companion object {
+        // Pale stoneware body against graphite; the handle carries the signal colour.
+        val BODY_TONE = intArrayOf(236, 231, 222)
+        val INTERIOR_TONE = intArrayOf(176, 170, 160)
+        val HANDLE_TONE = intArrayOf(226, 110, 58)
     }
 }

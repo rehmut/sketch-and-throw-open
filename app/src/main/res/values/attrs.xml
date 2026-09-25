@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="FaderControl">
+        <attr name="faderLabel" format="string" />
+        <attr name="faderUnit" format="string" />
+        <attr name="faderMin" format="float" />
+        <attr name="faderMax" format="float" />
+        <attr name="faderStep" format="float" />
+        <attr name="faderValue" format="float" />
+        <attr name="faderLowLabel" format="string" />
+        <attr name="faderHighLabel" format="string" />
+    </declare-styleable>
+</resources>

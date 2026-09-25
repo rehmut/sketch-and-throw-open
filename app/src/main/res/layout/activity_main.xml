@@ -1,182 +1,501 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="#FFFFFF" android:orientation="vertical">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:background="@color/housing" android:orientation="vertical">
+
+    <!-- Header: brand on home, back + title elsewhere. -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="60dp"
         android:orientation="horizontal" android:gravity="center_vertical"
-        android:paddingLeft="18dp" android:paddingRight="12dp" android:paddingTop="22dp"
-        android:paddingBottom="10dp">
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:orientation="vertical">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Centra" android:textColor="#243B30" android:textSize="29sp"
+        android:paddingLeft="4dp" android:paddingRight="4dp">
+        <ImageButton android:id="@+id/backButton" style="@style/IconButton"
+            android:src="@drawable/ic_back" android:contentDescription="Back"
+            android:visibility="gone" />
+        <LinearLayout android:id="@+id/brandGroup" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:orientation="horizontal" android:gravity="bottom" android:paddingLeft="12dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="centra" android:textColor="@color/graphite" android:textSize="23sp"
+                android:fontFamily="sans-serif-medium" android:letterSpacing="-0.02"
                 android:textStyle="bold" />
+            <TextView style="@style/Label" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:layout_marginLeft="8dp"
+                android:layout_marginBottom="3dp" android:fontFamily="monospace" android:text="CT 1" />
         </LinearLayout>
-        <Button android:id="@+id/libraryButton" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:text="Home" />
+        <TextView android:id="@+id/titleText" style="@style/Title" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:maxLines="1" android:ellipsize="end" android:visibility="gone" />
+        <LinearLayout android:id="@+id/ledGroup" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:orientation="horizontal"
+            android:gravity="center_vertical" android:paddingRight="4dp">
+            <ImageView android:layout_width="12dp" android:layout_height="12dp"
+                android:src="@drawable/led" android:importantForAccessibility="no" />
+            <TextView style="@style/Label" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:layout_marginLeft="6dp"
+                android:text="on device" />
+        </LinearLayout>
+        <Button android:id="@+id/headerAction" style="@style/Ghost"
+            android:layout_width="wrap_content" android:layout_height="40dp"
+            android:layout_marginRight="8dp" android:minHeight="40dp" android:visibility="gone" />
+        <ImageButton android:id="@+id/settingsButton" style="@style/IconButton"
+            android:src="@drawable/ic_settings" android:contentDescription="Settings" />
     </LinearLayout>
-    <LinearLayout android:id="@+id/homePanel" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical">
+    <View android:layout_width="match_parent" android:layout_height="1dp"
+        android:background="@color/rule" />
+
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- Home -->
+        <LinearLayout android:id="@+id/homePanel" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:orientation="vertical"
+            android:padding="@dimen/gutter">
             <ImageView android:id="@+id/heroImage" android:layout_width="match_parent"
-                android:layout_height="0dp" android:layout_weight="1.2" android:scaleType="centerCrop"
+                android:layout_height="0dp" android:layout_weight="1" android:scaleType="centerCrop"
+                android:background="@drawable/bg_display"
                 android:contentDescription="Light green ceramic bowl" />
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" android:paddingLeft="20dp" android:paddingRight="20dp"
-                android:paddingTop="12dp" android:paddingBottom="12dp">
-                <TextView android:id="@+id/heroCreditText" android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Photo credit and license" android:textColor="#526D60"
-                    android:textColorLink="#397B60" android:textSize="12sp" />
-            </LinearLayout>
+            <TextView android:id="@+id/heroCreditText" style="@style/Label"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingTop="8dp" android:fontFamily="monospace" android:textSize="11sp"
+                android:textColorLink="@color/graphite_soft" />
             <View android:layout_width="match_parent" android:layout_height="1dp"
-                android:layout_marginLeft="20dp" android:layout_marginRight="20dp"
-                android:background="#E4EAE5" />
+                android:layout_marginTop="14dp" android:background="@color/rule" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:paddingTop="14dp" android:paddingBottom="12dp">
-                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-                    <ImageButton android:id="@+id/myVesselsButton" android:layout_width="64dp"
-                        android:layout_height="64dp" android:background="@drawable/bg_action_secondary"
-                        android:src="@drawable/ic_folder" android:contentDescription="Open saved vessels" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:paddingTop="8dp" android:text="My vessels" android:textColor="#53625C"
-                        android:textSize="14sp" />
-                </LinearLayout>
-                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-                    <ImageButton android:id="@+id/pickButton" android:layout_width="72dp"
-                        android:layout_height="72dp" android:background="@drawable/bg_action_primary"
-                        android:src="@drawable/ic_gallery" android:contentDescription="Pick a pottery photo" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:paddingTop="8dp" android:text="Pick photo" android:textColor="#397B60"
-                        android:textSize="14sp" android:textStyle="bold" />
-                </LinearLayout>
-                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-                    <ImageButton android:id="@+id/liveButton" android:layout_width="64dp"
-                        android:layout_height="64dp" android:background="@drawable/bg_action_secondary"
-                        android:src="@drawable/ic_camera" android:contentDescription="Open live camera" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:paddingTop="8dp" android:text="Live camera" android:textColor="#53625C"
-                        android:textSize="14sp" />
-                </LinearLayout>
+                android:layout_marginTop="14dp" android:orientation="horizontal"
+                android:gravity="bottom">
+                <Button android:id="@+id/myVesselsButton" style="@style/Key"
+                    android:layout_width="0dp" android:layout_height="88dp"
+                    android:layout_weight="1" android:drawableTop="@drawable/ic_folder"
+                    android:text="my vessels" />
+                <Button android:id="@+id/pickButton" style="@style/Key.Primary"
+                    android:layout_width="0dp" android:layout_height="112dp"
+                    android:layout_weight="1" android:layout_marginLeft="@dimen/gap"
+                    android:layout_marginRight="@dimen/gap"
+                    android:drawableTop="@drawable/ic_gallery" android:text="pick photo" />
+                <Button android:id="@+id/liveButton" style="@style/Key"
+                    android:layout_width="0dp" android:layout_height="88dp"
+                    android:layout_weight="1" android:drawableTop="@drawable/ic_camera"
+                    android:text="live camera" />
             </LinearLayout>
-            <Space android:layout_width="match_parent" android:layout_height="0dp"
-                android:layout_weight="0.8" />
-    </LinearLayout>
-    <ScrollView android:id="@+id/libraryPanel" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true"
-        android:visibility="gone">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:paddingTop="12dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" android:paddingLeft="12dp" android:paddingRight="12dp"
-                android:paddingBottom="18dp">
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="Saved vessels" android:textColor="#243B30"
-                    android:textSize="21sp" android:textStyle="bold" />
-                <Button android:id="@+id/newFolderButton" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:text="New folder" />
+                android:layout_marginTop="12dp" android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView style="@style/Label" android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="recent" />
+                <TextView android:id="@+id/allVesselsLink" style="@style/Label"
+                    android:layout_width="wrap_content" android:layout_height="40dp"
+                    android:gravity="center_vertical" android:paddingLeft="12dp"
+                    android:textColor="@color/graphite" android:text="all vessels ›"
+                    android:background="@drawable/bg_icon_button" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/recentRow" android:layout_width="match_parent"
+                android:layout_height="92dp" android:orientation="horizontal" />
+            <TextView android:id="@+id/recentEmpty" style="@style/Label"
+                android:layout_width="match_parent" android:layout_height="92dp"
+                android:gravity="center" android:background="@drawable/bg_panel_dim"
+                android:text="saved vessels appear here" android:visibility="gone" />
+            <com.example.potterywheeldetector.GrilleView android:layout_width="match_parent"
+                android:layout_height="0dp" android:layout_weight="0.28"
+                android:layout_marginTop="14dp" android:minHeight="36dp"
+                android:background="@drawable/bg_panel_dim" />
+        </LinearLayout>
+
+        <!-- Library -->
+        <ScrollView android:id="@+id/libraryPanel" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:visibility="gone">
             <LinearLayout android:id="@+id/libraryContent" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:orientation="vertical" />
-            </LinearLayout>
-        </LinearLayout>
-    </ScrollView>
-    <FrameLayout android:id="@+id/cameraPanel" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1" android:background="#1C1714"
-        android:visibility="gone">
-        <androidx.camera.view.PreviewView android:id="@+id/preview"
-            android:layout_width="match_parent" android:layout_height="match_parent"
-            app:scaleType="fillCenter" />
-        <com.example.potterywheeldetector.DetectionOverlay android:id="@+id/overlay"
-            android:layout_width="match_parent" android:layout_height="match_parent" />
-    </FrameLayout>
-    <ScrollView android:id="@+id/galleryPanel" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true"
-        android:visibility="gone">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical">
+                android:layout_height="wrap_content" android:orientation="vertical"
+                android:paddingLeft="@dimen/gutter" android:paddingRight="@dimen/gutter"
+                android:paddingBottom="@dimen/gutter" />
+        </ScrollView>
+
+        <!-- Live camera -->
+        <FrameLayout android:id="@+id/cameraPanel" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:background="@color/graphite"
+            android:visibility="gone">
+            <androidx.camera.view.PreviewView android:id="@+id/preview"
+                android:layout_width="match_parent" android:layout_height="match_parent"
+                app:scaleType="fillCenter" />
+            <com.example.potterywheeldetector.DetectionOverlay android:id="@+id/overlay"
+                android:layout_width="match_parent" android:layout_height="match_parent" />
+        </FrameLayout>
+
+        <!-- Vessel: four steps under one rocker switch -->
+        <LinearLayout android:id="@+id/vesselPanel" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:orientation="vertical"
+            android:visibility="gone">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:paddingLeft="8dp" android:paddingRight="8dp">
-                <Button android:id="@+id/saveVesselButton" android:layout_width="0dp"
-                    android:layout_height="wrap_content" android:layout_weight="1"
-                    android:enabled="false" android:text="Save vessel" />
-                <Button android:id="@+id/open3dButton" android:layout_width="0dp"
-                    android:layout_height="wrap_content" android:layout_weight="1"
-                    android:enabled="false" android:text="Open 3D" />
-                <Button android:id="@+id/exportButton" android:layout_width="0dp"
-                    android:layout_height="wrap_content" android:layout_weight="1"
-                    android:enabled="false" android:text="Export OBJ" />
+                android:layout_marginLeft="@dimen/gutter" android:layout_marginRight="@dimen/gutter"
+                android:layout_marginTop="12dp" android:background="@drawable/bg_rocker"
+                android:orientation="horizontal" android:padding="3dp">
+                <Button android:id="@+id/stepOutline" style="@style/RockerItem" android:text="01 outline" />
+                <Button android:id="@+id/stepHandle" style="@style/RockerItem"
+                    android:layout_marginLeft="3dp" android:text="02 handle" />
+                <Button android:id="@+id/stepMeasure" style="@style/RockerItem"
+                    android:layout_marginLeft="3dp" android:text="03 measure" />
+                <Button android:id="@+id/step3d" style="@style/RockerItem"
+                    android:layout_marginLeft="3dp" android:text="04 3d" />
             </LinearLayout>
-            <com.example.potterywheeldetector.GalleryOutlineView android:id="@+id/galleryImage"
-                android:layout_width="match_parent" android:layout_height="300dp"
-                android:background="#29211D" />
-            <Switch android:id="@+id/mlOutlineSwitch" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:paddingLeft="12dp"
-                android:paddingRight="12dp" android:checked="true"
-                android:text="Use ML outline (tap inside vessel)" />
-            <SeekBar android:id="@+id/sensitivity" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:paddingLeft="12dp"
-                android:paddingRight="12dp" android:max="100" android:progress="50" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:padding="12dp" android:textColor="#675A50"
-                android:text="Tap inside the vessel to guide the outline. Use a straight-on photo of one upright pot." />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:paddingLeft="12dp" android:text="2D profile" android:textColor="#2D241E"
-                android:textSize="18sp" android:textStyle="bold" />
-            <com.example.potterywheeldetector.ProfileView android:id="@+id/profileView"
-                android:layout_width="match_parent" android:layout_height="300dp"
-                android:background="#E9DDD0" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:paddingLeft="12dp" android:paddingTop="12dp"
-                android:text="Scale and clay estimate" android:textColor="#2D241E"
-                android:textSize="18sp" android:textStyle="bold" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:paddingLeft="12dp" android:paddingTop="8dp" android:text="Known height (cm)"
-                android:textColor="#675A50" />
-            <EditText android:id="@+id/heightInput" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:hint="Vessel height in cm"
-                android:inputType="numberDecimal" android:singleLine="true"
-                android:paddingLeft="12dp" android:paddingRight="12dp" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:paddingLeft="12dp" android:paddingTop="8dp" android:text="Assumed wall and base thickness (mm)"
-                android:textColor="#675A50" />
-            <EditText android:id="@+id/wallInput" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:hint="Wall thickness in mm"
-                android:inputType="numberDecimal" android:singleLine="true" android:text="5"
-                android:paddingLeft="12dp" android:paddingRight="12dp" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:paddingLeft="12dp" android:paddingTop="8dp" android:text="Extra clay for trimming (%)"
-                android:textColor="#675A50" />
-            <EditText android:id="@+id/allowanceInput" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:hint="Trimming allowance in %"
-                android:inputType="numberDecimal" android:singleLine="true" android:text="25"
-                android:paddingLeft="12dp" android:paddingRight="12dp" />
-            <TextView android:id="@+id/measurementsText" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:padding="12dp"
-                android:text="Enter a vessel height to see dimensions and clay estimate."
-                android:textColor="#2D241E" android:textSize="16sp" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:paddingLeft="12dp" android:paddingRight="12dp" android:paddingBottom="18dp"
-                android:textColor="#675A50"
-                android:text="Approximate wet clay to centre on the wheel. Assumes a uniform wall and base, 1.8 g/cm³ clay density, and rotational symmetry. The photo cannot reveal the inside shape or shrinkage." />
+            <FrameLayout android:layout_width="match_parent" android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <!-- 01 outline -->
+                <ScrollView android:id="@+id/outlinePanel" android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:padding="@dimen/gutter">
+                        <FrameLayout android:layout_width="match_parent" android:layout_height="340dp"
+                            android:background="@drawable/bg_display" android:padding="6dp">
+                            <com.example.potterywheeldetector.GalleryOutlineView
+                                android:id="@+id/galleryImage" android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:contentDescription="Photo with the traced vessel outline. Tap inside the vessel to guide it." />
+                            <TextView style="@style/Label" android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" android:layout_margin="8dp"
+                                android:background="@drawable/bg_chip" android:fontFamily="monospace"
+                                android:paddingLeft="6dp" android:paddingRight="6dp"
+                                android:paddingTop="3dp" android:paddingBottom="3dp"
+                                android:textColor="@color/graphite" android:textSize="11sp"
+                                android:text="tap inside the vessel" />
+                        </FrameLayout>
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/gap_large" android:orientation="horizontal"
+                            android:gravity="center_vertical">
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                                android:layout_weight="1" android:orientation="vertical">
+                                <TextView style="@style/Body" android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium" android:text="ML outline" />
+                                <TextView style="@style/Label" android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" android:text="off = colour outline" />
+                            </LinearLayout>
+                            <Switch android:id="@+id/mlOutlineSwitch" style="@style/BraunSwitch"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:checked="true" android:contentDescription="Use ML outline" />
+                        </LinearLayout>
+                        <com.example.potterywheeldetector.FaderControl android:id="@+id/sensitivity"
+                            android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/gap_large"
+                            app:faderLabel="sensitivity" app:faderMin="0" app:faderMax="100"
+                            app:faderStep="1" app:faderValue="50"
+                            app:faderLowLabel="tight" app:faderHighLabel="loose" />
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/gutter" android:background="@drawable/bg_panel_dim"
+                            android:orientation="horizontal" android:gravity="center_vertical"
+                            android:paddingLeft="12dp" android:paddingRight="4dp"
+                            android:minHeight="52dp">
+                            <ImageView android:id="@+id/outlineLed" android:layout_width="12dp"
+                                android:layout_height="12dp" android:src="@drawable/led"
+                                android:importantForAccessibility="no" />
+                            <TextView android:id="@+id/outlineStatus" style="@style/Label"
+                                android:layout_width="0dp" android:layout_height="wrap_content"
+                                android:layout_weight="1" android:layout_marginLeft="8dp"
+                                android:paddingTop="8dp" android:paddingBottom="8dp"
+                                android:textColor="@color/graphite_soft" />
+                            <Button android:id="@+id/outlineNext" style="@style/Ghost"
+                                android:layout_width="wrap_content" android:layout_height="40dp"
+                                android:layout_margin="4dp" android:minHeight="40dp"
+                                android:background="@drawable/bg_icon_button"
+                                android:fontFamily="monospace" android:text="next ›" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- 02 handle -->
+                <ScrollView android:id="@+id/handlePanel" android:layout_width="match_parent"
+                    android:layout_height="match_parent" android:visibility="gone">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:padding="@dimen/gutter">
+                        <FrameLayout android:layout_width="match_parent" android:layout_height="280dp"
+                            android:background="@drawable/bg_display" android:padding="6dp">
+                            <com.example.potterywheeldetector.HandleView android:id="@+id/handleView"
+                                android:layout_width="match_parent" android:layout_height="match_parent"
+                                android:background="@drawable/bg_panel" />
+                        </FrameLayout>
+                        <LinearLayout android:id="@+id/noHandleCard" android:layout_width="match_parent"
+                            android:layout_height="wrap_content" android:layout_marginTop="@dimen/gap_large"
+                            android:background="@drawable/bg_panel" android:orientation="vertical"
+                            android:padding="14dp" android:visibility="gone">
+                            <TextView style="@style/Title" android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" android:text="no handle found" />
+                            <TextView style="@style/Label" android:layout_width="match_parent"
+                                android:layout_height="wrap_content" android:layout_marginTop="4dp"
+                                android:lineSpacingMultiplier="1.3"
+                                android:text="the body is modelled on its own. to add a handle, photograph the vessel side-on so the handle sticks out to the left or right, then retrace in 01 outline." />
+                        </LinearLayout>
+                        <LinearLayout android:id="@+id/handleControls" android:layout_width="match_parent"
+                            android:layout_height="wrap_content" android:orientation="vertical">
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/gap_large" android:orientation="horizontal"
+                                android:gravity="center_vertical">
+                                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                                    android:layout_weight="1" android:orientation="vertical">
+                                    <TextView style="@style/Body" android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:fontFamily="sans-serif-medium" android:text="handle" />
+                                    <TextView android:id="@+id/handleSideText" style="@style/Label"
+                                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                                </LinearLayout>
+                                <Switch android:id="@+id/handleSwitch" style="@style/BraunSwitch"
+                                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:checked="true" android:contentDescription="Model the handle" />
+                            </LinearLayout>
+                            <TextView style="@style/Label" android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" android:layout_marginTop="@dimen/gap_large"
+                                android:text="cross-section" />
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp" android:orientation="horizontal">
+                                <Button android:id="@+id/sectionRound" style="@style/Key"
+                                    android:layout_width="0dp" android:layout_height="68dp"
+                                    android:layout_weight="1" android:drawableTop="@drawable/ic_section_round"
+                                    android:text="round" />
+                                <Button android:id="@+id/sectionOval" style="@style/Key"
+                                    android:layout_width="0dp" android:layout_height="68dp"
+                                    android:layout_weight="1" android:layout_marginLeft="@dimen/gap"
+                                    android:layout_marginRight="@dimen/gap"
+                                    android:drawableTop="@drawable/ic_section_oval" android:text="oval" />
+                                <Button android:id="@+id/sectionStrap" style="@style/Key"
+                                    android:layout_width="0dp" android:layout_height="68dp"
+                                    android:layout_weight="1" android:drawableTop="@drawable/ic_section_strap"
+                                    android:text="pulled strap" />
+                            </LinearLayout>
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/gutter" android:orientation="horizontal">
+                                <TextView style="@style/Body" android:layout_width="0dp"
+                                    android:layout_height="wrap_content" android:layout_weight="1"
+                                    android:fontFamily="sans-serif-medium" android:text="thickness · from photo" />
+                                <TextView android:id="@+id/handleThicknessText" style="@style/Readout"
+                                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:textSize="15sp" />
+                            </LinearLayout>
+                            <com.example.potterywheeldetector.FaderControl android:id="@+id/handleWidthFader"
+                                android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/gap_large"
+                                app:faderLabel="width front to back · assumed" app:faderUnit="mm"
+                                app:faderMin="4" app:faderMax="60" app:faderStep="1" app:faderValue="20" />
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/gutter" android:background="@drawable/bg_display"
+                                android:orientation="horizontal" android:padding="14dp">
+                                <TextView style="@style/Readout" android:layout_width="0dp"
+                                    android:layout_height="wrap_content" android:layout_weight="1"
+                                    android:textColor="@color/on_graphite" android:textSize="13sp"
+                                    android:text="handle clay" />
+                                <TextView android:id="@+id/handleClayText" style="@style/Readout"
+                                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:textColor="@color/key" android:textSize="13sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- 03 measure -->
+                <ScrollView android:id="@+id/measurePanel" android:layout_width="match_parent"
+                    android:layout_height="match_parent" android:visibility="gone">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:padding="@dimen/gutter">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+                            <com.example.potterywheeldetector.ProfileView android:id="@+id/profileView"
+                                android:layout_width="150dp" android:layout_height="190dp"
+                                android:background="@drawable/bg_panel"
+                                android:contentDescription="Profile drawing with lettered dimensions" />
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                                android:layout_weight="1" android:layout_marginLeft="12dp"
+                                android:orientation="vertical">
+                                <TextView style="@style/Label" android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" android:labelFor="@+id/heightInput"
+                                    android:text="known height" />
+                                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                                    android:layout_marginTop="6dp" android:background="@drawable/bg_display"
+                                    android:orientation="horizontal" android:gravity="bottom"
+                                    android:paddingLeft="12dp" android:paddingRight="12dp"
+                                    android:paddingTop="6dp" android:paddingBottom="10dp">
+                                    <EditText android:id="@+id/heightInput" android:layout_width="0dp"
+                                        android:layout_height="wrap_content" android:layout_weight="1"
+                                        android:background="@null" android:fontFamily="monospace"
+                                        android:gravity="end" android:hint="—"
+                                        android:importantForAutofill="no" android:inputType="numberDecimal"
+                                        android:singleLine="true" android:textColor="@color/key"
+                                        android:textColorHint="@color/scale" android:textSize="28sp" />
+                                    <TextView style="@style/Readout" android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content" android:layout_marginLeft="6dp"
+                                        android:textColor="@color/on_graphite" android:textSize="13sp"
+                                        android:text="cm" />
+                                </LinearLayout>
+                                <TextView style="@style/Label" android:layout_width="match_parent"
+                                    android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                                    android:lineSpacingMultiplier="1.2"
+                                    android:text="at the stage you want to throw" />
+                                <TextView android:id="@+id/ratioText" style="@style/Readout"
+                                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                                    android:layout_marginTop="10dp" android:textSize="12sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                        <LinearLayout android:id="@+id/specList" android:layout_width="match_parent"
+                            android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                            android:orientation="vertical" />
+                        <LinearLayout android:id="@+id/claySettingsStrip" android:layout_width="match_parent"
+                            android:layout_height="wrap_content" android:layout_marginTop="@dimen/gap_large"
+                            android:background="@drawable/bg_clickable_row" android:clickable="true"
+                            android:focusable="true" android:gravity="center_vertical"
+                            android:minHeight="56dp" android:orientation="horizontal"
+                            android:paddingLeft="12dp" android:paddingRight="8dp"
+                            android:paddingTop="8dp" android:paddingBottom="10dp">
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                                android:layout_weight="1" android:orientation="vertical">
+                                <TextView style="@style/Label" android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" android:text="clay settings" />
+                                <TextView android:id="@+id/claySettingsText" style="@style/Readout"
+                                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                    android:textSize="13sp" />
+                            </LinearLayout>
+                            <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                                android:src="@drawable/ic_next" android:scaleType="center"
+                                android:importantForAccessibility="no" />
+                        </LinearLayout>
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/gap_large" android:background="@drawable/bg_display"
+                            android:orientation="vertical" android:padding="@dimen/gutter">
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:orientation="horizontal" android:gravity="center_vertical">
+                                <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                                    android:layout_weight="1" android:letterSpacing="0.05"
+                                    android:textColor="@color/on_graphite" android:textSize="12sp"
+                                    android:text="clay to centre" />
+                                <ImageView android:layout_width="8dp" android:layout_height="8dp"
+                                    android:src="@drawable/led_signal" android:importantForAccessibility="no" />
+                            </LinearLayout>
+                            <TextView android:id="@+id/clayTotalText" style="@style/Readout"
+                                android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp" android:gravity="end"
+                                android:textColor="@color/key" android:textSize="42sp" android:text="—" />
+                            <View android:layout_width="match_parent" android:layout_height="1dp"
+                                android:layout_marginTop="10dp" android:background="@color/graphite_soft" />
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp" android:orientation="horizontal">
+                                <TextView android:id="@+id/clayBodyText" style="@style/Readout"
+                                    android:layout_width="0dp" android:layout_height="wrap_content"
+                                    android:layout_weight="1" android:textColor="@color/on_graphite"
+                                    android:textSize="12sp" />
+                                <TextView android:id="@+id/clayHandleText" style="@style/Readout"
+                                    android:layout_width="0dp" android:layout_height="wrap_content"
+                                    android:layout_weight="1" android:textColor="@color/on_graphite"
+                                    android:textSize="12sp" />
+                                <TextView android:id="@+id/clayTrimText" style="@style/Readout"
+                                    android:layout_width="0dp" android:layout_height="wrap_content"
+                                    android:layout_weight="1" android:textColor="@color/on_graphite"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                        <TextView style="@style/Label" android:layout_width="match_parent"
+                            android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                            android:lineSpacingMultiplier="1.3"
+                            android:text="wet clay to centre on the wheel. assumes a uniform wall and base, 1.8 g/cm³ and a symmetric body. the photo cannot show the inside or shrinkage." />
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- 04 3d -->
+                <LinearLayout android:id="@+id/viewerPanel" android:layout_width="match_parent"
+                    android:layout_height="match_parent" android:orientation="vertical"
+                    android:padding="@dimen/gutter" android:visibility="gone">
+                    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp"
+                        android:layout_weight="1" android:background="@drawable/bg_display"
+                        android:padding="4dp">
+                        <com.example.potterywheeldetector.Vessel3DView android:id="@+id/vessel3dView"
+                            android:layout_width="match_parent" android:layout_height="match_parent"
+                            android:contentDescription="Rotatable 3D model of the vessel. Drag to turn it." />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:layout_margin="10dp" android:fontFamily="monospace"
+                            android:textColor="@color/on_graphite" android:textSize="11sp"
+                            android:text="drag to rotate" />
+                        <TextView android:id="@+id/viewerUnits" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:layout_gravity="end"
+                            android:layout_margin="10dp" android:fontFamily="monospace"
+                            android:textColor="@color/on_graphite" android:textSize="11sp" />
+                    </FrameLayout>
+                    <Button android:id="@+id/exportButton" style="@style/Key"
+                        android:layout_width="match_parent" android:layout_height="64dp"
+                        android:layout_marginTop="12dp" android:drawableLeft="@drawable/ic_export"
+                        android:paddingLeft="24dp" android:paddingRight="24dp"
+                        android:enabled="false" android:text="export OBJ" />
+                </LinearLayout>
+            </FrameLayout>
         </LinearLayout>
-    </ScrollView>
-    <LinearLayout android:id="@+id/viewerPanel" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical"
-        android:visibility="gone" android:background="#1C1714">
-        <Button android:id="@+id/backToProfileButton" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="Back to profile" />
-        <com.example.potterywheeldetector.Vessel3DView android:id="@+id/vessel3dView"
-            android:layout_width="match_parent" android:layout_height="0dp"
-            android:layout_weight="1" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:gravity="center" android:padding="12dp" android:textColor="#FFFFFF"
-            android:text="Drag to rotate the vessel" />
-    </LinearLayout>
+
+        <!-- Settings -->
+        <ScrollView android:id="@+id/settingsPanel" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="@dimen/gutter">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView style="@style/Label" android:layout_width="0dp"
+                        android:layout_height="wrap_content" android:layout_weight="1"
+                        android:text="01 clay defaults" />
+                    <TextView style="@style/Label" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="for new vessels" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp" android:background="@drawable/bg_panel"
+                    android:orientation="horizontal" android:gravity="center_vertical"
+                    android:padding="12dp">
+                    <ImageView android:layout_width="120dp" android:layout_height="104dp"
+                        android:src="@drawable/section_diagram" android:scaleType="fitCenter"
+                        android:contentDescription="Half section of a pot marking wall and base thickness" />
+                    <TextView style="@style/Label" android:layout_width="0dp"
+                        android:layout_height="wrap_content" android:layout_weight="1"
+                        android:layout_marginLeft="14dp" android:lineSpacingMultiplier="1.3"
+                        android:text="a photo shows only the outside. these values fill in what it can't see." />
+                </LinearLayout>
+                <com.example.potterywheeldetector.FaderControl android:id="@+id/settingsWall"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp" app:faderLabel="wall" app:faderUnit="mm"
+                    app:faderMin="2" app:faderMax="20" app:faderStep="0.5" app:faderValue="5"
+                    app:faderLowLabel="2 · thin" app:faderHighLabel="heavy · 20" />
+                <com.example.potterywheeldetector.FaderControl android:id="@+id/settingsBase"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp" app:faderLabel="base" app:faderUnit="mm"
+                    app:faderMin="2" app:faderMax="30" app:faderStep="0.5" app:faderValue="5"
+                    app:faderLowLabel="2" app:faderHighLabel="left to trim · 30" />
+                <com.example.potterywheeldetector.FaderControl android:id="@+id/settingsTrim"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp" app:faderLabel="trimming allowance"
+                    app:faderUnit="%" app:faderMin="0" app:faderMax="100" app:faderStep="1"
+                    app:faderValue="25" app:faderLowLabel="0" app:faderHighLabel="extra clay · 100" />
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:layout_marginTop="18dp" android:background="@color/rule" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp" android:orientation="horizontal"
+                    android:gravity="center_vertical">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical">
+                        <TextView style="@style/Body" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:fontFamily="sans-serif-medium"
+                            android:text="apply to open vessel" />
+                        <TextView android:id="@+id/applyToOpenHint" style="@style/Label"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="otherwise only new vessels change" />
+                    </LinearLayout>
+                    <Switch android:id="@+id/applyToOpenSwitch" style="@style/BraunSwitch"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:contentDescription="Apply to open vessel" />
+                </LinearLayout>
+                <TextView style="@style/Label" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:layout_marginTop="28dp"
+                    android:fontFamily="monospace" android:text="density 1.8 g/cm³ · fixed" />
+                <Button android:id="@+id/resetDefaultsButton" style="@style/Ghost"
+                    android:layout_width="match_parent" android:layout_height="48dp"
+                    android:layout_marginTop="12dp" android:text="reset to defaults" />
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+
     <TextView android:id="@+id/status" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:minHeight="56dp" android:padding="14dp"
-        android:text="Open a vessel or pick a photo." android:textColor="#2D241E"
-        android:textSize="14sp" />
+        android:layout_height="wrap_content" android:background="@color/housing_dim"
+        android:fontFamily="monospace" android:minHeight="40dp" android:paddingLeft="@dimen/gutter"
+        android:paddingRight="@dimen/gutter" android:paddingTop="10dp" android:paddingBottom="10dp"
+        android:textColor="@color/graphite_soft" android:textSize="12sp"
+        android:accessibilityLiveRegion="polite" android:visibility="gone" />
 </LinearLayout>
