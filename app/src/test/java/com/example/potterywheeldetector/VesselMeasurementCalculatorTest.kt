@@ -2,6 +2,7 @@ package com.example.potterywheeldetector
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
 
@@ -27,5 +28,18 @@ class VesselMeasurementCalculatorTest {
         )!!
         assertEquals(10.0, result.narrowestDiameterCm, 0.001)
         assertEquals(10.0, result.rimDiameterCm, 0.001)
+    }
+
+    @Test fun narrowFootIsExcludedFromNarrowestWallMeasurement() {
+        val rows = (0..100).map { y ->
+            val width = if (y < 75) 80f else 80f - (y - 75) * 2f
+            ProfileRow(y.toFloat(), 0f, width)
+        }
+        val result = VesselMeasurementCalculator.calculate(
+            VesselProfile(120, 120, rows), 10.0, 5.0, 25.0
+        )!!
+        assertTrue(result.narrowestDiameterCm > result.footDiameterCm)
+        assertTrue(result.narrowestFromBaseCm >= result.baseCurveEndCm)
+        assertTrue(result.baseCurveEndCm >= 1.5)
     }
 }

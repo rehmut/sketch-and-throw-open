@@ -1,7 +1,6 @@
 package com.example.potterywheeldetector
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -58,11 +57,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var overlay: DetectionOverlay
     private lateinit var status: TextView
     private lateinit var cameraPanel: FrameLayout
+    private lateinit var homePanel: LinearLayout
     private lateinit var libraryPanel: ScrollView
     private lateinit var galleryPanel: ScrollView
     private lateinit var viewerPanel: LinearLayout
     private lateinit var libraryContent: LinearLayout
-    private lateinit var pinterestContent: LinearLayout
     private lateinit var homeButton: Button
     private lateinit var heroImage: ImageView
     private lateinit var heroCreditText: TextView
@@ -93,7 +92,6 @@ class MainActivity : ComponentActivity() {
     private var mlPoint: PointF? = null
     private var interactiveSegmenter: InteractiveSegmenter? = null
     private lateinit var vesselStore: VesselStore
-    private lateinit var pinterestStore: PinterestReferenceStore
     private var currentSavedId: String? = null
     private val requestCamera = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -128,15 +126,14 @@ class MainActivity : ComponentActivity() {
         setContentView(R.layout.activity_main)
         preview = findViewById(R.id.preview)
         vesselStore = VesselStore(this)
-        pinterestStore = PinterestReferenceStore(this)
         overlay = findViewById(R.id.overlay)
         status = findViewById(R.id.status)
         cameraPanel = findViewById(R.id.cameraPanel)
+        homePanel = findViewById(R.id.homePanel)
         libraryPanel = findViewById(R.id.libraryPanel)
         galleryPanel = findViewById(R.id.galleryPanel)
         viewerPanel = findViewById(R.id.viewerPanel)
         libraryContent = findViewById(R.id.libraryContent)
-        pinterestContent = findViewById(R.id.pinterestContent)
         homeButton = findViewById(R.id.libraryButton)
         heroImage = findViewById(R.id.heroImage)
         heroCreditText = findViewById(R.id.heroCreditText)
@@ -153,12 +150,9 @@ class MainActivity : ComponentActivity() {
         sensitivity = findViewById(R.id.sensitivity)
         mlOutlineSwitch = findViewById(R.id.mlOutlineSwitch)
 
-        homeButton.setOnClickListener { showLibrary() }
+        homeButton.setOnClickListener { showHome() }
         findViewById<Button>(R.id.newFolderButton).setOnClickListener { createFolderDialog() }
-        findViewById<Button>(R.id.addPinterestButton).setOnClickListener { addPinterestDialog("") }
-        findViewById<View>(R.id.myVesselsButton).setOnClickListener {
-            libraryPanel.smoothScrollTo(0, libraryContent.top)
-        }
+        findViewById<View>(R.id.myVesselsButton).setOnClickListener { showLibrary() }
         findViewById<View>(R.id.liveButton).setOnClickListener { showCamera() }
         findViewById<View>(R.id.pickButton).setOnClickListener {
             pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -197,17 +191,13 @@ class MainActivity : ComponentActivity() {
             override fun handleOnBackPressed() {
                 when {
                     viewerPanel.visibility == View.VISIBLE -> showGallery()
-                    libraryPanel.visibility != View.VISIBLE -> showLibrary()
+                    homePanel.visibility != View.VISIBLE -> showHome()
                     else -> finish()
                 }
             }
         })
         showBowlPhoto()
-        showLibrary()
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            val shared = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
-            if (PinterestReferenceStore.pinterestUrl(shared) != null) addPinterestDialog(shared)
-        }
+        showHome()
     }
 
     private fun showBowlPhoto() {
@@ -221,7 +211,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showCamera() {
+        status.visibility = View.VISIBLE
         homeButton.visibility = View.VISIBLE
+        homePanel.visibility = View.GONE
         libraryPanel.visibility = View.GONE
         viewerPanel.visibility = View.GONE
         cameraPanel.visibility = View.VISIBLE
@@ -286,12 +278,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun loadPhoto(uri: Uri) {
+        status.visibility = View.VISIBLE
         photoVersion++
         extractionVersion++
         val version = photoVersion
         controller?.unbind()
         homeButton.visibility = View.VISIBLE
         cameraPanel.visibility = View.GONE
+        homePanel.visibility = View.GONE
         libraryPanel.visibility = View.GONE
         viewerPanel.visibility = View.GONE
         galleryPanel.visibility = View.VISIBLE
@@ -463,21 +457,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun showLibrary() {
+    private fun showHome() {
         controller?.unbind()
+        status.visibility = View.GONE
         homeButton.visibility = View.GONE
         cameraPanel.visibility = View.GONE
         galleryPanel.visibility = View.GONE
         viewerPanel.visibility = View.GONE
+        libraryPanel.visibility = View.GONE
+        homePanel.visibility = View.VISIBLE
+    }
+
+    private fun showLibrary() {
+        controller?.unbind()
+        status.visibility = View.VISIBLE
+        homeButton.visibility = View.VISIBLE
+        cameraPanel.visibility = View.GONE
+        galleryPanel.visibility = View.GONE
+        viewerPanel.visibility = View.GONE
+        homePanel.visibility = View.GONE
         libraryPanel.visibility = View.VISIBLE
         renderLibrary()
-        renderPinterestReferences()
-        status.text = "Choose a saved vessel or pick a new photo."
+        status.text = "Choose a saved vessel or create a folder."
     }
 
     private fun showGallery() {
+        status.visibility = View.VISIBLE
         homeButton.visibility = View.VISIBLE
         cameraPanel.visibility = View.GONE
+        homePanel.visibility = View.GONE
         libraryPanel.visibility = View.GONE
         viewerPanel.visibility = View.GONE
         galleryPanel.visibility = View.VISIBLE
@@ -485,8 +493,10 @@ class MainActivity : ComponentActivity() {
 
     private fun show3d() {
         if (mesh == null) return
+        status.visibility = View.VISIBLE
         homeButton.visibility = View.VISIBLE
         cameraPanel.visibility = View.GONE
+        homePanel.visibility = View.GONE
         libraryPanel.visibility = View.GONE
         galleryPanel.visibility = View.GONE
         viewerPanel.visibility = View.VISIBLE
@@ -557,69 +567,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
-
-    private fun addPinterestDialog(sharedText: String) {
-        val fields = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(16.dp, 8.dp, 16.dp, 0)
-        }
-        val urlInput = EditText(this).apply {
-            hint = "https://www.pinterest.com/pin/..."
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or
-                android.text.InputType.TYPE_TEXT_VARIATION_URI
-            setSingleLine(true)
-            setText(PinterestReferenceStore.pinterestUrl(sharedText).orEmpty())
-        }
-        val nameInput = EditText(this).apply {
-            hint = "Name, e.g. Bowls to try"
-            setSingleLine(true)
-        }
-        fields.addView(urlInput)
-        fields.addView(nameInput)
-        AlertDialog.Builder(this).setTitle("Save Pinterest reference").setView(fields)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ ->
-                try {
-                    pinterestStore.add(urlInput.text.toString(), nameInput.text.toString())
-                    renderPinterestReferences()
-                    status.text = "Pinterest reference saved."
-                } catch (error: Exception) {
-                    status.text = error.localizedMessage ?: "Could not save Pinterest link."
-                }
-            }.show()
-    }
-
-    private fun renderPinterestReferences() {
-        pinterestContent.removeAllViews()
-        for (reference in pinterestStore.all()) {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            row.addView(Button(this).apply {
-                text = reference.name
-                isAllCaps = false
-                setOnClickListener {
-                    try {
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(reference.url)))
-                    } catch (error: Exception) {
-                        status.text = "Could not open Pinterest link."
-                    }
-                }
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            row.addView(Button(this).apply {
-                text = "Delete"
-                isAllCaps = false
-                setOnClickListener {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Remove ${reference.name}?")
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Remove") { _, _ ->
-                            pinterestStore.delete(reference.id)
-                            renderPinterestReferences()
-                        }.show()
-                }
-            })
-            pinterestContent.addView(row)
-        }
-    }
 
     private fun createFolderDialog() {
         val input = EditText(this).apply { hint = "Folder name, e.g. Bowls" }
@@ -771,15 +718,20 @@ class MainActivity : ComponentActivity() {
         }
         val measured = VesselMeasurementCalculator.calculate(profile, height, wall, allowance)
             ?: return
+        val scaledMesh = VesselMeshBuilder.build(profile, wallMm = wall, heightCm = height)
+        mesh = scaledMesh
+        vessel3dView.mesh = scaledMesh
         profileView.measurements = measured
         measurementsText.text = String.format(Locale.getDefault(),
             "Height: %.1f cm\nWidest diameter: %.1f cm at %.1f cm above base\n" +
-                "Narrowest body diameter: %.1f cm at %.1f cm above base\n" +
+                "Narrowest wall diameter: %.1f cm at %.1f cm above base\n" +
+                "Base curve excluded below about %.1f cm\n" +
                 "Rim / foot diameter: %.1f / %.1f cm\n" +
                 "Height : widest diameter = %.2f : 1\n" +
                 "Clay to centre: about %.0f g (%.2f kg)",
             measured.heightCm, measured.widestDiameterCm, measured.widestFromBaseCm,
             measured.narrowestDiameterCm, measured.narrowestFromBaseCm,
+            measured.baseCurveEndCm,
             measured.rimDiameterCm, measured.footDiameterCm,
             measured.heightCm / measured.widestDiameterCm,
             measured.estimatedClayGrams, measured.estimatedClayGrams / 1000.0)

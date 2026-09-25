@@ -16,7 +16,7 @@ class Vessel3DView(context: Context, attrs: AttributeSet?) : View(context, attrs
     var mesh: VesselMesh? = null
         set(value) { field = value; invalidate() }
     private var yaw = 0.35f
-    private var pitch = -0.24f
+    private var pitch = 0.58f
     private var lastX = 0f
     private var lastY = 0f
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -69,9 +69,11 @@ class Vessel3DView(context: Context, attrs: AttributeSet?) : View(context, attrs
             val light = ((nx * -0.3f + ny * 0.5f + nz * 0.85f) / length)
                 .coerceIn(-1f, 1f)
             val shade = (0.55f + 0.37f * light).coerceIn(0.25f, 1f)
+            val clay = if (face.interior) intArrayOf(154, 101, 70) else
+                intArrayOf(197, 129, 84)
             DrawFace(points.map { it.z }.average().toFloat(), path,
-                Color.rgb((197 * shade).toInt(), (129 * shade).toInt(),
-                    (84 * shade).toInt()))
+                Color.rgb((clay[0] * shade).toInt(), (clay[1] * shade).toInt(),
+                    (clay[2] * shade).toInt()))
         }.sortedBy { it.depth }
         faces.forEach { face ->
             paint.color = face.shade

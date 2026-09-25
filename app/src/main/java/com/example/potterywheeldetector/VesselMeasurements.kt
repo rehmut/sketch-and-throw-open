@@ -2,6 +2,7 @@ package com.example.potterywheeldetector
 
 import kotlin.math.PI
 import kotlin.math.max
+import kotlin.math.min
 
 data class VesselMeasurements(
     val heightCm: Double,
@@ -9,6 +10,7 @@ data class VesselMeasurements(
     val widestFromBaseCm: Double,
     val narrowestDiameterCm: Double,
     val narrowestFromBaseCm: Double,
+    val baseCurveEndCm: Double,
     val rimDiameterCm: Double,
     val footDiameterCm: Double,
     val estimatedClayGrams: Double
@@ -32,9 +34,20 @@ object VesselMeasurementCalculator {
         val wallCm = wallMm / 10.0
         val widest = profile.rows.maxBy { it.right - it.left }
         // The first and last few mask rows often taper to a one-pixel tip.
-        // Use the stable body span for reported narrowest/rim/foot diameters.
         val trim = max(1, profile.rows.size / 50)
-        val bodyRows = profile.rows.subList(trim, profile.rows.size - trim)
+        val rows = profile.rows
+        val footWidth = rows[rows.lastIndex - trim].right - rows[rows.lastIndex - trim].left
+        val widestWidth = rows.maxOf { it.right - it.left }
+        val minWallWidth = footWidth + (widestWidth - footWidth) * 0.30f
+        val maxBaseRows = max(2, rows.size * 35 / 100)
+        val candidate = (rows.lastIndex - trim downTo max(0, rows.lastIndex - maxBaseRows))
+            .firstOrNull { rows[it].right - rows[it].left >= minWallWidth }
+        val excludedBaseRows = max(rows.size * 15 / 100,
+            if (candidate == null || widestWidth <= footWidth * 1.05f)
+                rows.size * 15 / 100 else rows.lastIndex - candidate)
+        val bodyEnd = min(rows.lastIndex - trim, rows.lastIndex - excludedBaseRows)
+            .coerceAtLeast(trim)
+        val bodyRows = rows.subList(trim, bodyEnd + 1)
         val narrowest = bodyRows.minBy { it.right - it.left }
         fun diameter(row: ProfileRow) = (row.right - row.left) * cmPerPixel
 
@@ -61,6 +74,7 @@ object VesselMeasurementCalculator {
             heightCm,
             diameter(widest), (profile.bottom - widest.y) * cmPerPixel,
             diameter(narrowest), (profile.bottom - narrowest.y) * cmPerPixel,
+            (profile.bottom - rows[bodyEnd].y) * cmPerPixel,
             diameter(profile.rows[trim]), diameter(profile.rows[profile.rows.lastIndex - trim]),
             clayGrams
         )
