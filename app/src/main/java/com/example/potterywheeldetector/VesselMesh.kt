@@ -8,21 +8,30 @@ import kotlin.math.min
 import kotlin.math.sin
 
 data class MeshVertex(val x: Float, val y: Float, val z: Float)
-data class MeshFace(val indices: List<Int>, val interior: Boolean = false)
+enum class MeshPart(val objName: String) { BODY("body"), HANDLE("handle") }
+data class MeshFace(
+    val indices: List<Int>,
+    val interior: Boolean = false,
+    val part: MeshPart = MeshPart.BODY
+)
 data class VesselMesh(val vertices: List<MeshVertex>, val faces: List<MeshFace>) {
     fun toObj(): String = buildString {
         appendLine("# Pottery vessel generated from a photo silhouette")
         appendLine("# Relative units only; calibrate before manufacturing")
         vertices.forEach { appendLine(String.format(Locale.US, "v %.5f %.5f %.5f", it.x, it.y, it.z)) }
-        faces.forEach { face ->
-            appendLine("f ${face.indices.joinToString(" ") { (it + 1).toString() }}")
+        faces.groupBy { it.part }.forEach { (part, partFaces) ->
+            appendLine("g ${part.objName}")
+            partFaces.forEach { face ->
+                appendLine("f ${face.indices.joinToString(" ") { (it + 1).toString() }}")
+            }
         }
     }
 }
 
 object VesselMeshBuilder {
     fun build(profile: VesselProfile, segments: Int = 32, maxRings: Int = 72,
-              wallMm: Double? = null, heightCm: Double? = null): VesselMesh {
+              wallMm: Double? = null, heightCm: Double? = null, baseMm: Double? = null,
+              handle: HandleOptions = HandleOptions()): VesselMesh {
         require(profile.rows.size >= 2 && segments >= 3 && maxRings >= 2)
         // Mask tips can be a single pixel wide. Start and end at stable rows.
         val trim = if (profile.rows.size < 5) 0 else
@@ -35,13 +44,16 @@ object VesselMeshBuilder {
         val maxRadius = rings.maxOf { it.radius }.coerceAtLeast(1f)
         val heightScale = 50f / maxRadius
         val height = profile.height * heightScale
-        val requestedWall = if (wallMm != null && heightCm != null &&
-            wallMm > 0 && heightCm > 0) (wallMm / 10.0 / heightCm * height).toFloat()
-            else 3f
+        val unitsPerMm = if (heightCm != null && heightCm > 0)
+            (height / (heightCm * 10.0)).toFloat() else null
+        val requestedWall = if (wallMm != null && wallMm > 0 && unitsPerMm != null)
+            (wallMm * unitsPerMm).toFloat() else 3f
         val wall = min(max(0.5f, requestedWall),
             rings.first().radius * heightScale * 0.25f)
         val modeledHeight = (rings.last().y - rings.first().y) * heightScale
-        val baseThickness = min(max(2f, wall), modeledHeight * 0.25f)
+        val requestedBase = if (baseMm != null && baseMm > 0 && unitsPerMm != null)
+            (baseMm * unitsPerMm).toFloat() else wall
+        val baseThickness = min(max(2f, requestedBase), modeledHeight * 0.25f)
         val bottomY = height / 2f - (rings.last().y - profile.top) * heightScale
         val floorY = bottomY + baseThickness
         val vertices = ArrayList<MeshVertex>(rowCount * segments * 2 + 2)
@@ -109,6 +121,12 @@ object VesselMeshBuilder {
                 at(inner.last(), segment)), interior = true))
             faces.add(MeshFace(listOf(baseCenter, at(outer.last(), segment),
                 at(outer.last(), next))))
+        }
+        val traced = profile.handle
+        if (traced != null && handle.enabled) {
+            val axisX = profile.rows.map { (it.left + it.right) / 2f }.sorted()[profile.rows.size / 2]
+            HandleMeshBuilder.append(vertices, faces, traced, handle,
+                HandleMeshBuilder.Placement(axisX, profile.top, height / 2f, heightScale, unitsPerMm))
         }
         return VesselMesh(vertices, faces)
     }

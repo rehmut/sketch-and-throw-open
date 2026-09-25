@@ -13,10 +13,15 @@ data class ProfileRow(val y: Float, val left: Float, val right: Float) {
     val radius: Float get() = (right - left) / 2f
 }
 
+/**
+ * The body silhouette, one row per pixel line, plus a handle when one was found.
+ * Rows describe the body only: a handle is traced separately and never widens them.
+ */
 data class VesselProfile(
     val imageWidth: Int,
     val imageHeight: Int,
-    val rows: List<ProfileRow>
+    val rows: List<ProfileRow>,
+    val handle: VesselHandle? = null
 ) {
     val top: Float get() = rows.first().y
     val bottom: Float get() = rows.last().y
@@ -26,8 +31,23 @@ data class VesselProfile(
     val width: Float get() = right - left
 }
 
+/** Image-space box, kept free of Android types so extraction runs in JVM tests. */
+internal data class MaskBox(val left: Int, val top: Int, val right: Int, val bottom: Int) {
+    val width: Int get() = right - left
+    val centerX: Float get() = (left + right) / 2f
+    fun contains(x: Int, y: Int) = x in left until right && y in top until bottom
+}
+
+internal data class MaskPoint(val x: Float, val y: Float)
+
+private fun Rect.toMaskBox() = MaskBox(left, top, right, bottom)
+private fun PointF.toMaskPoint() = MaskPoint(x, y)
+
 /** Extracts the dominant foreground silhouette from an upright, straight-on photo. */
 object VesselProfileExtractor {
+    /** Fraction of the body's confidence threshold that still counts as handle. */
+    private const val HANDLE_CONFIDENCE_FACTOR = 0.5f
+
     fun extract(
         bitmap: Bitmap,
         focus: Rect? = null,
@@ -54,7 +74,8 @@ object VesselProfileExtractor {
             .roundToInt().coerceIn(12, 125)
 
         val mask = BooleanArray(pixels.size) { distances[it] >= cutoff }
-        return extractFromMask(w, h, mask, focus, seed, mirrorMissingSide = true)
+        return extractFromMask(w, h, mask, focus?.toMaskBox(), seed?.toMaskPoint(),
+            mirrorMissingSide = true)
     }
 
     fun extractFromConfidence(
@@ -68,16 +89,23 @@ object VesselProfileExtractor {
         if (width < 32 || height < 32 || confidence.size != width * height) return null
         val threshold = 0.8f - sensitivity.coerceIn(0, 100) * 0.006f
         val mask = BooleanArray(confidence.size) { confidence[it] >= threshold }
-        return extractFromMask(width, height, mask, focus, seed, mirrorMissingSide = false)
+        // A handle is thin and far from the tap point, so the model is less sure of
+        // it than of the body. A looser mask may extend the body into a handle.
+        val handleThreshold = threshold * HANDLE_CONFIDENCE_FACTOR
+        val handleMask = BooleanArray(confidence.size) { confidence[it] >= handleThreshold }
+        return extractFromMask(width, height, mask, focus?.toMaskBox(), seed?.toMaskPoint(),
+            mirrorMissingSide = false, handleMask = handleMask)
     }
 
-    private fun extractFromMask(
+    internal fun extractFromMask(
         w: Int,
         h: Int,
         mask: BooleanArray,
-        focus: Rect?,
-        seed: PointF?,
-        mirrorMissingSide: Boolean
+        focus: MaskBox?,
+        seed: MaskPoint?,
+        mirrorMissingSide: Boolean,
+        /** Looser mask; pixels connected through it to the vessel may form a handle. */
+        handleMask: BooleanArray? = null
     ): VesselProfile? {
         val visited = BooleanArray(mask.size)
         val queue = IntArray(mask.size)
@@ -190,9 +218,16 @@ object VesselProfileExtractor {
             rows.add(row)
             previous = row
         }
-        val smoothed = rows.mapIndexed { index, row ->
-            val reach = min(3, min(index, rows.lastIndex - index))
-            val window = rows.subList(index - reach, index + reach + 1)
+        // Take the handle out before smoothing and mirroring, so its joins do not
+        // spread into neighbouring rows or get copied onto the other side.
+        val component = BooleanArray(mask.size)
+        for (index in selected) component[index] = true
+        if (handleMask != null && handleMask.size == mask.size) growThrough(component, handleMask, w, h)
+        val detection = HandleDetector.detect(w, h, component, rows)
+        val bodyRows = detection.rows
+        val smoothed = bodyRows.mapIndexed { index, row ->
+            val reach = min(3, min(index, bodyRows.lastIndex - index))
+            val window = bodyRows.subList(index - reach, index + reach + 1)
             ProfileRow(row.y, window.map { it.left }.average().toFloat(),
                 window.map { it.right }.average().toFloat())
         }
@@ -201,7 +236,7 @@ object VesselProfileExtractor {
         // outer edge on each row and mirror it around the estimated axis.
         val detectedWidth = smoothed.maxOf { it.right } - smoothed.minOf { it.left }
         val axis = when {
-            focus != null && focus.width() > detectedWidth * 1.2f -> focus.centerX().toFloat()
+            focus != null && focus.width > detectedWidth * 1.2f -> focus.centerX
             seed != null -> seed.x
             else -> w / 2f
         }
@@ -210,8 +245,31 @@ object VesselProfileExtractor {
             ProfileRow(row.y, (axis - radius).coerceAtLeast(0f),
                 (axis + radius).coerceAtMost((w - 1).toFloat()))
         } else smoothed
-        val profile = VesselProfile(w, h, finalRows)
+        val profile = VesselProfile(w, h, finalRows, detection.handle)
         return if (profile.width > w * 0.04f && profile.height > h * 0.12f) profile else null
+    }
+
+    /** Adds every [loose] pixel connected to [region] into [region], in place. */
+    private fun growThrough(region: BooleanArray, loose: BooleanArray, w: Int, h: Int) {
+        val queue = IntArray(region.size)
+        var tail = 0
+        for (index in region.indices) if (region[index]) queue[tail++] = index
+        var head = 0
+        while (head < tail) {
+            val index = queue[head++]
+            val x = index % w
+            val y = index / w
+            fun visit(neighbor: Int) {
+                if (loose[neighbor] && !region[neighbor]) {
+                    region[neighbor] = true
+                    queue[tail++] = neighbor
+                }
+            }
+            if (x > 0) visit(index - 1)
+            if (x < w - 1) visit(index + 1)
+            if (y > 0) visit(index - w)
+            if (y < h - 1) visit(index + w)
+        }
     }
 
     private fun sampleBackground(pixels: IntArray, w: Int, h: Int): IntArray {

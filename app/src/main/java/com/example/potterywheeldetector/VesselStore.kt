@@ -18,7 +18,9 @@ data class SavedVessel(
     val heightCm: Double?,
     val wallMm: Double,
     val allowancePercent: Double,
-    val profile: VesselProfile
+    val profile: VesselProfile,
+    val baseMm: Double = wallMm,
+    val handleOptions: HandleOptions = HandleOptions()
 )
 
 class VesselStore(context: Context) {
@@ -33,6 +35,8 @@ class VesselStore(context: Context) {
     fun vessels(folderId: String): List<SavedVessel> =
         vessels.filter { it.folderId == folderId }.sortedByDescending { it.createdAt }
     fun find(id: String?): SavedVessel? = vessels.firstOrNull { it.id == id }
+    fun recent(limit: Int): List<SavedVessel> =
+        vessels.sortedByDescending { it.createdAt }.take(limit)
 
     fun createFolder(name: String): VesselFolder {
         val clean = name.trim()
@@ -64,7 +68,7 @@ class VesselStore(context: Context) {
     fun save(
         existingId: String?, folderId: String, name: String, bitmap: Bitmap,
         profile: VesselProfile, heightCm: Double?, wallMm: Double,
-        allowancePercent: Double
+        allowancePercent: Double, baseMm: Double, handleOptions: HandleOptions
     ): SavedVessel {
         require(folders.any { it.id == folderId })
         val clean = name.trim()
@@ -82,7 +86,7 @@ class VesselStore(context: Context) {
             throw error
         }
         val entry = SavedVessel(id, folderId, clean, old?.createdAt ?: System.currentTimeMillis(),
-            heightCm, wallMm, allowancePercent, profile)
+            heightCm, wallMm, allowancePercent, profile, baseMm, handleOptions)
         vessels.removeAll { it.id == id }
         vessels.add(entry)
         persist()
@@ -130,11 +134,17 @@ class VesselStore(context: Context) {
                         row.getDouble(2).toFloat()))
                 }
                 if (rows.size < 2) continue
+                val wallMm = item.getDouble("wallMm")
                 vessels.add(SavedVessel(item.getString("id"), item.getString("folderId"),
                     item.getString("name"), item.getLong("createdAt"),
                     if (item.isNull("heightCm")) null else item.getDouble("heightCm"),
-                    item.getDouble("wallMm"), item.getDouble("allowancePercent"),
-                    VesselProfile(item.getInt("imageWidth"), item.getInt("imageHeight"), rows)))
+                    wallMm, item.getDouble("allowancePercent"),
+                    VesselProfile(item.getInt("imageWidth"), item.getInt("imageHeight"), rows,
+                        item.optJSONObject("handle")?.let(::readHandle)),
+                    // Vessels saved before base and handle settings existed.
+                    item.optDouble("baseMm", wallMm),
+                    item.optJSONObject("handleOptions")?.let(::readHandleOptions)
+                        ?: HandleOptions()))
             }
         } catch (error: Exception) {
             // Keep a damaged index on disk for recovery and present an empty library.
@@ -143,6 +153,48 @@ class VesselStore(context: Context) {
             folders.add(VesselFolder(UUID.randomUUID().toString(), "My vessels"))
         }
         if (folders.isEmpty()) folders.add(VesselFolder(UUID.randomUUID().toString(), "My vessels"))
+    }
+
+    private fun writeHandle(handle: VesselHandle) = JSONObject()
+        .put("side", handle.side.name)
+        .put("upperJoinY", handle.upperJoinY.toDouble())
+        .put("lowerJoinY", handle.lowerJoinY.toDouble())
+        .put("projection", handle.projection.toDouble())
+        .put("hasEye", handle.hasEye)
+        .put("path", JSONArray().apply {
+            handle.path.forEach { point ->
+                put(JSONArray().put(point.x.toDouble()).put(point.y.toDouble())
+                    .put(point.thickness.toDouble()))
+            }
+        })
+
+    /** A damaged or partial handle record is dropped rather than failing the library. */
+    private fun readHandle(item: JSONObject): VesselHandle? = try {
+        val pathJson = item.getJSONArray("path")
+        val path = (0 until pathJson.length()).map { index ->
+            val point = pathJson.getJSONArray(index)
+            HandlePoint(point.getDouble(0).toFloat(), point.getDouble(1).toFloat(),
+                point.getDouble(2).toFloat())
+        }
+        if (path.size < 2) null else VesselHandle(
+            HandleSide.valueOf(item.getString("side")), path,
+            item.getDouble("upperJoinY").toFloat(), item.getDouble("lowerJoinY").toFloat(),
+            item.getDouble("projection").toFloat(), item.getBoolean("hasEye"))
+    } catch (error: Exception) { null }
+
+    private fun writeHandleOptions(options: HandleOptions) = JSONObject()
+        .put("enabled", options.enabled)
+        .put("section", options.section.name)
+        .put("widthMm", options.widthMm)
+
+    private fun readHandleOptions(item: JSONObject): HandleOptions {
+        val fallback = HandleOptions()
+        return HandleOptions(
+            item.optBoolean("enabled", fallback.enabled),
+            HandleSection.entries.firstOrNull { it.name == item.optString("section") }
+                ?: fallback.section,
+            item.optDouble("widthMm", fallback.widthMm).coerceIn(HandleOptions.WIDTH_RANGE)
+        )
     }
 
     private fun persist() {
@@ -162,7 +214,10 @@ class VesselStore(context: Context) {
                     .put("heightCm", entry.heightCm ?: JSONObject.NULL)
                     .put("wallMm", entry.wallMm).put("allowancePercent", entry.allowancePercent)
                     .put("imageWidth", entry.profile.imageWidth)
-                    .put("imageHeight", entry.profile.imageHeight).put("rows", rows))
+                    .put("imageHeight", entry.profile.imageHeight).put("rows", rows)
+                    .put("baseMm", entry.baseMm)
+                    .put("handleOptions", writeHandleOptions(entry.handleOptions))
+                    .put("handle", entry.profile.handle?.let(::writeHandle) ?: JSONObject.NULL))
             }
         })
         val indexFile = AtomicFile(index)
