@@ -29,6 +29,12 @@ data class VesselProfile(
     val right: Float get() = rows.maxOf { it.right }
     val height: Float get() = bottom - top
     val width: Float get() = right - left
+
+    /**
+     * The turning axis: the median centre of all rows. Unlike the middle of the
+     * bounding box it ignores a tilted rim tip or a stray row at either end.
+     */
+    val axisX: Float get() = rows.map { (it.left + it.right) / 2f }.sorted()[rows.size / 2]
 }
 
 /** Image-space box, kept free of Android types so extraction runs in JVM tests. */

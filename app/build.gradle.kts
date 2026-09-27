@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.potterywheeldetector"
         minSdk = 24
         targetSdk = 36
-        versionCode = 13
-        versionName = "0.11.1"
+        versionCode = 14
+        versionName = "0.11.2"
     }
 
     buildTypes {

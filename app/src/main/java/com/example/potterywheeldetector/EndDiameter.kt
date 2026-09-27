@@ -1,9 +1,10 @@
 package com.example.potterywheeldetector
 
+import kotlin.math.abs
 import kotlin.math.max
 
 /**
- * Rim and foot diameters from a silhouette's row widths.
+ * Rim and foot diameters from a silhouette's rows.
  *
  * A photo sees the rim and the foot ring as flat ellipses, so the silhouette
  * narrows to a point at each end. Reading the width a fixed few rows in lands on
@@ -11,8 +12,10 @@ import kotlin.math.max
  * the width stops growing: an ellipse grows steeply and then levels off, and the
  * level it reaches is the true diameter.
  *
- * A bevel or a sloping foot also narrows towards the end, but in a straight
- * line. That is real geometry, not perspective, so there the end width is kept.
+ * A rim that leans, because the pot or the camera is tilted, also narrows the
+ * end, but only one edge moves while the other runs straight; that too is read
+ * where it levels off. Only a bevel or sloping foot, where both edges step in
+ * along a straight line, is real geometry, and there the end width is kept.
  */
 internal object EndDiameter {
     /** Fraction of the height searched from each end for the rim or foot. */
@@ -21,25 +24,28 @@ internal object EndDiameter {
     private const val LEVEL_GROWTH = 0.015f
     /** How far the halfway width must bulge above a straight line to be an ellipse. */
     private const val ELLIPSE_BULGE = 0.15f
+    /** An edge moving less than this share of the other edge's travel is standing still. */
+    private const val STILL_EDGE = 0.25f
 
     /** A diameter and how many rows in from its end it was taken. */
     data class Reading(val width: Float, val rowsIn: Int)
 
-    /** [widths] from rim (index 0) to foot. */
-    fun rim(widths: List<Float>): Float = rimReading(widths).width
+    /** [rows] from rim (index 0) to foot. */
+    fun rim(rows: List<ProfileRow>): Float = rimReading(rows).width
 
-    /** [widths] from rim (index 0) to foot. */
-    fun foot(widths: List<Float>): Float = footReading(widths).width
+    fun foot(rows: List<ProfileRow>): Float = footReading(rows).width
 
     /** Rows before [Reading.rowsIn] belong to the rim ellipse, not the wall. */
-    fun rimReading(widths: List<Float>): Reading = fromEnd(widths)
+    fun rimReading(rows: List<ProfileRow>): Reading = fromEnd(rows)
 
-    fun footReading(widths: List<Float>): Reading = fromEnd(widths.asReversed())
+    fun footReading(rows: List<ProfileRow>): Reading = fromEnd(rows.asReversed())
 
-    private fun fromEnd(raw: List<Float>): Reading {
-        if (raw.isEmpty()) return Reading(0f, 0)
-        if (raw.size < 3) return Reading(raw.max(), 0)
-        val widths = median3(raw)
+    private fun fromEnd(rows: List<ProfileRow>): Reading {
+        if (rows.isEmpty()) return Reading(0f, 0)
+        if (rows.size < 3) return Reading(rows.maxOf { it.right - it.left }, 0)
+        val lefts = median3(rows.map { it.left })
+        val rights = median3(rows.map { it.right })
+        val widths = lefts.indices.map { rights[it] - lefts[it] }
         val last = widths.lastIndex
         val endRow = max(1, widths.size / 50).coerceAtMost(last)
         val zone = max(6, (widths.size * SEARCH_ZONE).toInt()).coerceAtMost(last)
@@ -54,17 +60,19 @@ internal object EndDiameter {
             val row = max(endRow, level).coerceAtMost(last)
             return Reading(widths[row], row)
         }
+        val levelEnd = (level + window).coerceAtMost(last)
+        val levelled = Reading(widths.subList(0, levelEnd + 1).max(), levelEnd)
 
-        // An ellipse is already most of the way out halfway to where it levels
-        // off; a straight bevel is only halfway.
+        // An ellipse is already most of the way out halfway to where it levels off.
         val halfway = widths[level / 2]
         val straightLine = (widths[0] + widths[level]) / 2f
-        return if (halfway - straightLine > ELLIPSE_BULGE * growth) {
-            val levelEnd = (level + window).coerceAtMost(last)
-            Reading(widths.subList(0, levelEnd + 1).max(), levelEnd)
-        } else {
-            Reading(widths[endRow], endRow)
-        }
+        if (halfway - straightLine > ELLIPSE_BULGE * growth) return levelled
+
+        // A straight narrowing: a lean if one edge stood still, a bevel if both moved.
+        val leftTravel = abs(lefts[level] - lefts[0])
+        val rightTravel = abs(rights[level] - rights[0])
+        val leaning = minOf(leftTravel, rightTravel) < STILL_EDGE * maxOf(leftTravel, rightTravel)
+        return if (leaning) levelled else Reading(widths[endRow], endRow)
     }
 
     /** Removes single-row spikes and dropouts without moving edges. */

@@ -14,18 +14,22 @@ class EndDiameterTest {
         return full * sqrt(1f - t * t)
     }
 
+    /** Rows centred on x = 200 with the given widths. */
+    private fun centred(widths: List<Float>) =
+        widths.mapIndexed { y, w -> ProfileRow(y.toFloat(), 200f - w / 2f, 200f + w / 2f) }
+
     @Test fun rimAndFootSeenAsEllipsesReadTheirFullWidth() {
         // A 300-row cylinder whose rim and foot show as flat ellipses, as in a photo
         // taken from slightly above.
         val widths = (0..300).map { y -> minOf(cap(100f, 12, y), cap(100f, 8, 300 - y)) }
-        assertEquals(100f, EndDiameter.rim(widths), 2f)
-        assertEquals(100f, EndDiameter.foot(widths), 2f)
+        assertEquals(100f, EndDiameter.rim(centred(widths)), 2f)
+        assertEquals(100f, EndDiameter.foot(centred(widths)), 2f)
     }
 
     @Test fun bevelledFootKeepsItsNarrowEnd() {
         // A straight 30-row chamfer: real geometry, not perspective.
         val widths = (0..300).map { y -> if (y < 270) 120f else 120f - (y - 270) * 1.2f }
-        assertEquals(widths[294], EndDiameter.foot(widths), 3f)
+        assertEquals(widths[294], EndDiameter.foot(centred(widths)), 3f)
     }
 
     @Test fun bowlFootRingIsMeasuredNotTheBody() {
@@ -38,13 +42,13 @@ class EndDiameterTest {
                 else -> cap(40f, 5, 200 - y)
             }
         }
-        assertEquals(160f, EndDiameter.rim(widths), 3f)
-        assertEquals(40f, EndDiameter.foot(widths), 2f)
+        assertEquals(160f, EndDiameter.rim(centred(widths)), 3f)
+        assertEquals(40f, EndDiameter.foot(centred(widths)), 2f)
     }
 
     @Test fun singlePixelTipIsIgnored() {
         val widths = (0..100).map { if (it < 2) 2f else 100f }
-        assertEquals(100f, EndDiameter.rim(widths), 0.5f)
+        assertEquals(100f, EndDiameter.rim(centred(widths)), 0.5f)
     }
 
     @Test fun photographedMugRimMatchesItsBody() {
@@ -59,6 +63,20 @@ class EndDiameterTest {
         assertEquals(result.widestDiameterCm, result.rimDiameterCm, result.widestDiameterCm * 0.03)
     }
 
+    @Test fun tiltedRimReadsItsFullWidth() {
+        // The rim plane leans: the left edge runs straight to the top while the
+        // right edge drops 30 rows. Only one side moves, so it is not a bevel.
+        val rows = (0..300).map { y ->
+            val right = if (y >= 30) 250f else 160f + 3f * y
+            ProfileRow(y.toFloat(), 150f, right)
+        }
+        assertEquals(100f, EndDiameter.rim(rows), 2f)
+        val profile = VesselProfile(400, 400, rows)
+        val result = VesselMeasurementCalculator.calculate(profile, 30.0, 5.0, 25.0)!!
+        assertEquals(10.0, result.rimDiameterCm, 0.2)
+        assertEquals(10.0, result.narrowestDiameterCm, 0.2)
+    }
+
     @Test fun narrowestDiameterSkipsTheRimEllipse() {
         val widths = (0..300).map { y -> minOf(cap(100f, 12, y), cap(100f, 8, 300 - y)) }
         val profile = VesselProfile(400, 400,
@@ -68,7 +86,7 @@ class EndDiameterTest {
     }
 
     @Test fun tinyProfilesStillGiveAValue() {
-        assertEquals(50f, EndDiameter.rim(listOf(50f, 50f)), 0.01f)
+        assertEquals(50f, EndDiameter.rim(centred(listOf(50f, 50f))), 0.01f)
         assertEquals(0f, EndDiameter.rim(emptyList()), 0.01f)
     }
 }

@@ -47,11 +47,10 @@ object VesselMeasurementCalculator {
         // The first and last few mask rows often taper to a one-pixel tip.
         val trim = max(1, profile.rows.size / 50)
         val rows = profile.rows
-        val widths = rows.map { it.right - it.left }
         // Rim and foot as a photo shows them are ellipses; the narrowest-wall search
         // starts below the rim's and stops above the foot's.
-        val rimReading = EndDiameter.rimReading(widths)
-        val footReading = EndDiameter.footReading(widths)
+        val rimReading = EndDiameter.rimReading(rows)
+        val footReading = EndDiameter.footReading(rows)
         val footWidth = rows[rows.lastIndex - trim].right - rows[rows.lastIndex - trim].left
         val widestWidth = rows.maxOf { it.right - it.left }
         val minWallWidth = footWidth + (widestWidth - footWidth) * 0.30f

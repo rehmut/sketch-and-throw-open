@@ -124,9 +124,8 @@ object VesselMeshBuilder {
         }
         val traced = profile.handle
         if (traced != null && handle.enabled) {
-            val axisX = profile.rows.map { (it.left + it.right) / 2f }.sorted()[profile.rows.size / 2]
             HandleMeshBuilder.append(vertices, faces, traced, handle,
-                HandleMeshBuilder.Placement(axisX, profile.top, height / 2f, heightScale, unitsPerMm))
+                HandleMeshBuilder.Placement(profile.axisX, profile.top, height / 2f, heightScale, unitsPerMm))
         }
         return VesselMesh(vertices, faces)
     }

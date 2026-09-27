@@ -58,7 +58,7 @@ class HandleView(context: Context, attrs: AttributeSet?) : View(context, attrs) 
         val body = SilhouettePainter.bodyPath(shape, map)
         canvas.drawPath(body, bodyFill)
         canvas.drawPath(body, bodyLine)
-        val axisX = map.x((shape.left + shape.right) / 2f)
+        val axisX = map.x(shape.axisX)
         canvas.drawLine(axisX, map.y(shape.top) - 8 * density, axisX, map.y(shape.bottom) + 8 * density, axis)
         val handle = shape.handle ?: return
         if (!handleEnabled) return

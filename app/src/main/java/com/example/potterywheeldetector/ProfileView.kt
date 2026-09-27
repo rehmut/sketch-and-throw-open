@@ -73,15 +73,17 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         val values = measurements?.takeIf { showValues }
         letter.textSize = sp(if (values != null) 13f else 11f)
         val bounds = SilhouettePainter.bounds(shape)
-        // Room on the left for the height dimension, and above and below for
-        // rim and foot when values are written out.
-        bounds.left -= shape.width * (if (values != null) 0.34f else 0.22f)
+        // The height dimension goes on the side away from the handle. Leave room
+        // for it, and above and below for rim and foot when values are written out.
+        val handleOnLeft = showHandle && shape.handle?.side == HandleSide.LEFT
+        val dimensionRoom = shape.width * (if (values != null) 0.34f else 0.22f)
+        if (handleOnLeft) bounds.right += dimensionRoom else bounds.left -= dimensionRoom
         if (values != null) {
             bounds.top -= shape.height * 0.14f
             bounds.bottom += shape.height * 0.14f
         }
         val map = ImageMapping.fit(bounds, width, height, 12 * density)
-        val axisX = map.x((shape.left + shape.right) / 2f)
+        val axisX = map.x(shape.axisX)
         canvas.drawLine(axisX, map.y(shape.top) - 6 * density, axisX,
             map.y(shape.bottom) + 6 * density, axis)
         canvas.drawPath(SilhouettePainter.bodyPath(shape, map), outline)
@@ -90,7 +92,7 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
             canvas.drawPath(SilhouettePainter.midlinePath(handle, map), handleLine)
         }
 
-        drawHeight(canvas, shape, map, values)
+        drawHeight(canvas, shape, map, values, onRight = handleOnLeft)
         val measured = measurements ?: return
         val cmPerPixel = measured.heightCm / shape.height
         // B sits right of the axis and C left, so they stay apart when the widest
@@ -112,16 +114,20 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
             drawLabel(canvas, text, axisX + offset, y, align)
         }
         if (values != null) {
-            drawEndDimension(canvas, shape.rows.first(), values.rimDiameterCm / cmPerPixel, map,
+            drawEndDimension(canvas, shape.rows.first(), shape.axisX, values.rimDiameterCm / cmPerPixel, map,
                 above = true, "D ${cm(values.rimDiameterCm)}")
-            drawEndDimension(canvas, shape.rows.last(), values.footDiameterCm / cmPerPixel, map,
+            drawEndDimension(canvas, shape.rows.last(), shape.axisX, values.footDiameterCm / cmPerPixel, map,
                 above = false, "E ${cm(values.footDiameterCm)}")
         }
     }
 
-    /** Vertical height dimension on the left, its value written along it when shown. */
-    private fun drawHeight(canvas: Canvas, shape: VesselProfile, map: ImageMapping, values: VesselMeasurements?) {
-        val dimX = map.x(shape.left) - shape.width * 0.12f * map.scale
+    /** Vertical height dimension beside the body, its value written along it when shown. */
+    private fun drawHeight(
+        canvas: Canvas, shape: VesselProfile, map: ImageMapping, values: VesselMeasurements?, onRight: Boolean
+    ) {
+        val offset = shape.width * 0.12f * map.scale
+        val dimX = if (onRight) map.x(shape.right) + offset else map.x(shape.left) - offset
+        val outward = if (onRight) 1f else -1f
         val top = map.y(shape.top)
         val bottom = map.y(shape.bottom)
         val tick = 4 * density
@@ -130,29 +136,32 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         canvas.drawLine(dimX - tick, bottom, dimX + tick, bottom, dimension)
         val middle = (top + bottom) / 2f
         if (values == null) {
-            letter.textAlign = Paint.Align.RIGHT
-            canvas.drawText("A", dimX - 3 * density, middle, letter)
+            letter.textAlign = if (onRight) Paint.Align.LEFT else Paint.Align.RIGHT
+            canvas.drawText("A", dimX + outward * 3 * density, middle, letter)
             return
         }
+        // Read bottom-to-top on the left, top-to-bottom on the right, text outside the line.
         letter.textAlign = Paint.Align.CENTER
+        val textX = dimX + outward * 5 * density
         canvas.save()
-        canvas.rotate(-90f, dimX - 5 * density, middle)
-        canvas.drawText("A ${cm(values.heightCm)}", dimX - 5 * density, middle, letter)
+        canvas.rotate(if (onRight) 90f else -90f, textX, middle)
+        canvas.drawText("A ${cm(values.heightCm)}", textX, middle, letter)
         canvas.restore()
     }
 
     /**
      * Rim or foot diameter: a dimension line just beyond the end, with extension
-     * ticks, spanning the measured [diameterPx] rather than the end row, which a
-     * photo shows narrowed by perspective.
+     * ticks, spanning the measured [diameterPx] centred on the turning axis. The
+     * end row itself is no guide: a photo narrows it by perspective, and on a
+     * tilted rim its highest point sits off to one side.
      */
     private fun drawEndDimension(
-        canvas: Canvas, row: ProfileRow, diameterPx: Double, map: ImageMapping, above: Boolean, text: String
+        canvas: Canvas, row: ProfileRow, center: Float, diameterPx: Double, map: ImageMapping,
+        above: Boolean, text: String
     ) {
         val gap = 12 * density
         val edgeY = map.y(row.y)
         val y = if (above) edgeY - gap else edgeY + gap
-        val center = (row.left + row.right) / 2f
         val left = map.x(center - diameterPx.toFloat() / 2f)
         val right = map.x(center + diameterPx.toFloat() / 2f)
         canvas.drawLine(left, edgeY, left, y + (if (above) -3 else 3) * density, extension)
