@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PotteryWheelDetector"
+rootProject.name = "SketchAndThrow"
 include(":app")

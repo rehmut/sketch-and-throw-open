@@ -20,7 +20,7 @@
                 android:importantForAccessibility="no" />
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical" android:layout_marginLeft="10dp"
-                android:text="centra" android:textColor="@color/graphite" android:textSize="21sp"
+                android:text="sketch &amp; throw" android:textColor="@color/graphite" android:textSize="21sp"
                 android:fontFamily="sans-serif" android:letterSpacing="0.02" />
         </LinearLayout>
         <TextView android:id="@+id/titleText" style="@style/Title" android:layout_width="0dp"
@@ -105,7 +105,7 @@
                 android:layout_width="match_parent" android:layout_height="92dp"
                 android:gravity="center" android:background="@drawable/bg_panel_dim"
                 android:text="saved vessels appear here" android:visibility="gone" />
-            <com.example.potterywheeldetector.GrilleView android:layout_width="match_parent"
+            <io.github.rehmut.sketchandthrow.GrilleView android:layout_width="match_parent"
                 android:layout_height="0dp" android:layout_weight="0.28"
                 android:layout_marginTop="14dp" android:minHeight="36dp"
                 android:background="@drawable/bg_panel_dim" />
@@ -127,7 +127,7 @@
             <androidx.camera.view.PreviewView android:id="@+id/preview"
                 android:layout_width="match_parent" android:layout_height="match_parent"
                 app:scaleType="fillCenter" />
-            <com.example.potterywheeldetector.DetectionOverlay android:id="@+id/overlay"
+            <io.github.rehmut.sketchandthrow.DetectionOverlay android:id="@+id/overlay"
                 android:layout_width="match_parent" android:layout_height="match_parent" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_gravity="bottom" android:gravity="center_horizontal"
@@ -171,7 +171,7 @@
                         android:orientation="vertical" android:padding="@dimen/gutter">
                         <FrameLayout android:layout_width="match_parent" android:layout_height="340dp"
                             android:background="@drawable/bg_display" android:padding="6dp">
-                            <com.example.potterywheeldetector.GalleryOutlineView
+                            <io.github.rehmut.sketchandthrow.GalleryOutlineView
                                 android:id="@+id/galleryImage" android:layout_width="match_parent"
                                 android:layout_height="match_parent"
                                 android:contentDescription="Photo with the traced vessel outline. Tap inside the vessel to guide it." />
@@ -213,7 +213,7 @@
                                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                                 android:contentDescription="Find a handle" />
                         </LinearLayout>
-                        <com.example.potterywheeldetector.FaderControl android:id="@+id/sensitivity"
+                        <io.github.rehmut.sketchandthrow.FaderControl android:id="@+id/sensitivity"
                             android:layout_width="match_parent" android:layout_height="wrap_content"
                             android:layout_marginTop="@dimen/gap_large"
                             app:faderLabel="sensitivity" app:faderMin="0" app:faderMax="100"
@@ -248,7 +248,7 @@
                         android:orientation="vertical" android:padding="@dimen/gutter">
                         <FrameLayout android:layout_width="match_parent" android:layout_height="280dp"
                             android:background="@drawable/bg_display" android:padding="6dp">
-                            <com.example.potterywheeldetector.HandleView android:id="@+id/handleView"
+                            <io.github.rehmut.sketchandthrow.HandleView android:id="@+id/handleView"
                                 android:layout_width="match_parent" android:layout_height="match_parent"
                                 android:background="@drawable/bg_panel" />
                         </FrameLayout>
@@ -307,7 +307,7 @@
                                     android:layout_width="wrap_content" android:layout_height="wrap_content"
                                     android:textSize="15sp" />
                             </LinearLayout>
-                            <com.example.potterywheeldetector.FaderControl android:id="@+id/handleWidthFader"
+                            <io.github.rehmut.sketchandthrow.FaderControl android:id="@+id/handleWidthFader"
                                 android:layout_width="match_parent" android:layout_height="wrap_content"
                                 android:layout_marginTop="@dimen/gap_large"
                                 app:faderLabel="width front to back · assumed" app:faderUnit="mm"
@@ -335,7 +335,7 @@
                         android:orientation="vertical" android:padding="@dimen/gutter">
                         <LinearLayout android:id="@+id/measureTop" android:layout_width="match_parent"
                             android:layout_height="wrap_content" android:orientation="horizontal">
-                            <com.example.potterywheeldetector.ProfileView android:id="@+id/profileView"
+                            <io.github.rehmut.sketchandthrow.ProfileView android:id="@+id/profileView"
                                 android:layout_width="150dp" android:layout_height="190dp"
                                 android:background="@drawable/bg_panel"
                                 android:contentDescription="Technical drawing with lettered dimensions. Tap to enlarge." />
@@ -443,7 +443,7 @@
                     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp"
                         android:layout_weight="1" android:background="@drawable/bg_display"
                         android:padding="4dp">
-                        <com.example.potterywheeldetector.Vessel3DView android:id="@+id/vessel3dView"
+                        <io.github.rehmut.sketchandthrow.Vessel3DView android:id="@+id/vessel3dView"
                             android:layout_width="match_parent" android:layout_height="match_parent"
                             android:contentDescription="Rotatable 3D model of the vessel. Drag to turn it." />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -489,17 +489,17 @@
                         android:layout_marginLeft="14dp" android:lineSpacingMultiplier="1.3"
                         android:text="a photo shows only the outside. these values fill in what it can't see." />
                 </LinearLayout>
-                <com.example.potterywheeldetector.FaderControl android:id="@+id/settingsWall"
+                <io.github.rehmut.sketchandthrow.FaderControl android:id="@+id/settingsWall"
                     android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:layout_marginTop="18dp" app:faderLabel="wall" app:faderUnit="mm"
                     app:faderMin="2" app:faderMax="20" app:faderStep="0.5" app:faderValue="5"
                     app:faderLowLabel="2 · thin" app:faderHighLabel="heavy · 20" />
-                <com.example.potterywheeldetector.FaderControl android:id="@+id/settingsBase"
+                <io.github.rehmut.sketchandthrow.FaderControl android:id="@+id/settingsBase"
                     android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:layout_marginTop="18dp" app:faderLabel="base" app:faderUnit="mm"
                     app:faderMin="2" app:faderMax="30" app:faderStep="0.5" app:faderValue="5"
                     app:faderLowLabel="2" app:faderHighLabel="left to trim · 30" />
-                <com.example.potterywheeldetector.FaderControl android:id="@+id/settingsTrim"
+                <io.github.rehmut.sketchandthrow.FaderControl android:id="@+id/settingsTrim"
                     android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:layout_marginTop="18dp" app:faderLabel="trimming allowance"
                     app:faderUnit="%" app:faderMin="0" app:faderMax="100" app:faderStep="1"
@@ -528,6 +528,31 @@
                 <Button android:id="@+id/resetDefaultsButton" style="@style/Ghost"
                     android:layout_width="match_parent" android:layout_height="48dp"
                     android:layout_marginTop="12dp" android:text="reset to defaults" />
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:layout_marginTop="28dp" android:background="@color/rule" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp" android:orientation="horizontal">
+                    <TextView style="@style/Label" android:layout_width="0dp"
+                        android:layout_height="wrap_content" android:layout_weight="1"
+                        android:text="02 about" />
+                    <TextView android:id="@+id/versionText" style="@style/Label"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:fontFamily="monospace" />
+                </LinearLayout>
+                <TextView style="@style/Label" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                    android:lineSpacingMultiplier="1.3"
+                    android:text="photos are traced on this phone and never uploaded. google ml kit sends anonymous diagnostics about how its detector runs." />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp" android:orientation="horizontal">
+                    <Button android:id="@+id/licencesButton" style="@style/Ghost"
+                        android:layout_width="0dp" android:layout_height="48dp"
+                        android:layout_weight="1" android:text="licences" />
+                    <Button android:id="@+id/privacyButton" style="@style/Ghost"
+                        android:layout_width="0dp" android:layout_height="48dp"
+                        android:layout_weight="1" android:layout_marginLeft="@dimen/gap"
+                        android:text="privacy policy" />
+                </LinearLayout>
             </LinearLayout>
         </ScrollView>
     </FrameLayout>

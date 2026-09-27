@@ -1,4 +1,4 @@
-# Centra
+# Sketch & Throw
 
 An independent native Android project for planning and saving wheel-thrown vessels. The interface follows 1970s Braun product design: warm grey housing, graphite keys, one signal colour, lower-case labels and monospaced readouts. It opens to a home screen with a line illustration of a vase, a bowl and a mug, quick actions and the most recent vessels. Every saved vessel has a category (bowl, mug, cup, vase, jar or plate) shown as a line illustration; the app suggests one from the vessel's proportions and whether it has a handle, and the library filters by category within user-named folders. A gallery photo can be outlined with MediaPipe Interactive Image Segmenter, viewed as a 2D profile, measured after entering a known height, and revolved into a 3D preview. Vessels, profiles, scale settings, and photos can be saved locally and reopened. The 3D mesh can be exported as OBJ. A live camera screen uses CameraX and ML Kit to draw object boxes; its shutter takes a picture and traces it like a picked photo.
 
@@ -35,4 +35,4 @@ The command-line build is `./gradlew assembleDebug` (`.\gradlew.bat assembleDebu
 
 ## Google Play path
 
-The project targets API 36, meeting the September 2026 target API requirement for new phone apps. Before publishing, replace `com.example.potterywheeldetector` with a unique permanent application ID, set the final name and icon, test on real devices, and use Android Studio's **Build > Generate Signed Bundle / APK** to create a signed Android App Bundle. A Play Console account and store listing are required. Review Play's data safety and camera permission declarations for the final feature set.
+The project targets API 36, meeting the September 2026 target API requirement for new phone apps. The application ID is `io.github.rehmut.sketchandthrow` and is permanent once published. Test on real devices and use Android Studio's **Build > Generate Signed Bundle / APK** to create a signed Android App Bundle. A Play Console account and store listing are required. Review Play's data safety and camera permission declarations for the final feature set.
