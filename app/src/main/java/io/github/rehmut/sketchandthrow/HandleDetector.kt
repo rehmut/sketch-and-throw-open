@@ -1,12 +1,8 @@
 package io.github.rehmut.sketchandthrow
 
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 /**
  * Finds a handle in a side-on vessel silhouette and returns body rows with the
@@ -36,9 +32,6 @@ internal object HandleDetector {
     private const val SPAN_PAD = 0.03f
     /** Largest vertical gap, as a height fraction, bridged between pieces of one handle. */
     private const val MAX_PIECE_GAP = 0.12f
-    private const val RAY_COUNT = 48
-    private const val RAY_LIMIT_DEGREES = 80.0
-    private const val RAY_STEP = 0.5f
     private const val MIN_EYE_ROWS = 3
     private const val REFINE_PASSES = 3
 
@@ -58,10 +51,23 @@ internal object HandleDetector {
         val tolerance = max(2f, bodyWidth * EDGE_TOLERANCE)
         val pad = max(2, (rows.size * SPAN_PAD).roundToInt())
 
+        // A leaning or foreshortened rim leaves corners the strict outline misses but
+        // a looser mask fills in. They sit over the body, not beside it: judge what
+        // is outside against the rows widened to the measured rim and foot.
+        // Only those end rows are widened; elsewhere the rows are left to the handle
+        // logic below, since they still carry the handle's joins.
+        val guard = ProfileEnds.level(VesselProfile(width, height, rows)).rows
+        val rimRows = EndDiameter.rimReading(rows).let { if (it.perspective) it.rowsIn else 0 }
+        val footRows = EndDiameter.footReading(rows).let { if (it.perspective) it.rowsIn else 0 }
+        fun guarded(edges: List<ProfileRow>) = edges.mapIndexed { index, row ->
+            if (index >= rimRows && index <= edges.lastIndex - footRows) row
+            else row.copy(left = min(row.left, guard[index].left), right = max(row.right, guard[index].right))
+        }
+
         val axis = median(rows.map { (it.left + it.right) / 2f })
         var edges = trimAsymmetricRows(rows, axis, max(3f, bodyWidth * ASYMMETRY_TOLERANCE))
         val maxGap = (rows.size * MAX_PIECE_GAP).roundToInt()
-        var region = largestResidual(width, component, edges, top, tolerance, maxGap) ?: return unchanged
+        var region = largestResidual(width, component, guarded(edges), top, tolerance, maxGap) ?: return unchanged
         // Correct every row the candidate touches, including joins that were too
         // shallow to register as asymmetric, then look again: the region grows to
         // take in the joins and settles within a pass or two.
@@ -69,7 +75,7 @@ internal object HandleDetector {
             val refinedAxis = axisOutside(rows, region.minY - pad, region.maxY + pad, top, axis)
             val corrected = mirrorSpan(rows, region.side, region.minY - pad,
                 region.maxY + pad, refinedAxis)
-            val next = largestResidual(width, component, corrected, top, tolerance, maxGap)
+            val next = largestResidual(width, component, guarded(corrected), top, tolerance, maxGap)
                 ?.takeIf { it.side == region.side } ?: break
             val settled = next.minY == region.minY && next.maxY == region.maxY
             edges = corrected
@@ -77,9 +83,10 @@ internal object HandleDetector {
             if (settled) break
         }
 
+        val shape = guarded(edges)
         val bodyArea = rows.sumOf { (it.right - it.left + 1f).toDouble() }
         val projection = region.pixels.maxOf { pixel ->
-            outsideDistance(pixel % width, edges[pixel / width - top], region.side)
+            outsideDistance(pixel % width, shape[pixel / width - top], region.side)
         }
         val span = region.maxY - region.minY + 1
         if (span < rows.size * MIN_SPAN || projection < bodyWidth * MIN_PROJECTION ||
@@ -88,7 +95,10 @@ internal object HandleDetector {
 
         val handleMask = BooleanArray(component.size)
         region.pixels.forEach { handleMask[it] = true }
-        val path = traceMidline(width, height, handleMask, region, edges, top, projection)
+        val touching = region.pixels.filter { pixel ->
+            outsideDistance(pixel % width, shape[pixel / width - top], region.side) <= tolerance + 2f
+        }.toIntArray()
+        val path = smooth(HandleMidline.trace(width, height, handleMask, region.pixels, touching))
         if (path.size < 3) return unchanged
         val handle = VesselHandle(
             side = region.side,
@@ -96,7 +106,7 @@ internal object HandleDetector {
             upperJoinY = path.first().y,
             lowerJoinY = path.last().y,
             projection = projection,
-            hasEye = hasEye(width, component, handleMask, region, edges, top, tolerance)
+            hasEye = hasEye(width, component, handleMask, region, shape, top, tolerance)
         )
         return Result(edges, handle)
     }
@@ -228,51 +238,6 @@ internal object HandleDetector {
             if (touchesBody) pieces.add(Region(side, queue.copyOf(tail), minY, maxY))
         }
         return pieces
-    }
-
-    /**
-     * Casts rays from the body edge at the handle's mid-height, sweeping from
-     * straight up to straight down. Each ray crosses the handle once; the middle
-     * of that crossing is a midline point and its length the seen thickness.
-     * This follows C, D and ear shapes alike, where scanning rows would read the
-     * horizontal top and bottom of a C as one long run.
-     */
-    private fun traceMidline(
-        width: Int, height: Int, handle: BooleanArray, region: Region,
-        edges: List<ProfileRow>, top: Int, projection: Float
-    ): List<HandlePoint> {
-        val originY = (region.minY + region.maxY) / 2f
-        val edgeRow = edges[(originY.roundToInt() - top).coerceIn(0, edges.lastIndex)]
-        val sign = if (region.side == HandleSide.RIGHT) 1f else -1f
-        val originX = if (region.side == HandleSide.RIGHT) edgeRow.right else edgeRow.left
-        val reach = hypot(projection, (region.maxY - region.minY).toFloat()) + 4f
-        val points = ArrayList<HandlePoint>()
-        for (step in 0 until RAY_COUNT) {
-            val degrees = -RAY_LIMIT_DEGREES + 2 * RAY_LIMIT_DEGREES * step / (RAY_COUNT - 1)
-            val angle = degrees * PI / 180.0
-            val dx = sign * cos(angle).toFloat()
-            val dy = sin(angle).toFloat()
-            var enter = -1f
-            var exit = -1f
-            var distance = 0f
-            while (distance <= reach) {
-                val x = (originX + dx * distance).roundToInt()
-                val y = (originY + dy * distance).roundToInt()
-                val inside = x in 0 until width && y in 0 until height && handle[y * width + x]
-                if (inside) {
-                    if (enter < 0f) enter = distance
-                    exit = distance
-                } else if (enter >= 0f) {
-                    break
-                }
-                distance += RAY_STEP
-            }
-            if (enter < 0f) continue
-            val middle = (enter + exit) / 2f
-            points.add(HandlePoint(originX + dx * middle, originY + dy * middle,
-                exit - enter + 1f))
-        }
-        return smooth(points)
     }
 
     private fun smooth(points: List<HandlePoint>): List<HandlePoint> {
