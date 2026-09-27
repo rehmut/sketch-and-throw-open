@@ -98,7 +98,14 @@ internal object HandleDetector {
         val touching = region.pixels.filter { pixel ->
             outsideDistance(pixel % width, shape[pixel / width - top], region.side) <= tolerance + 2f
         }.toIntArray()
+        // End points over the body belong to the wall, not the handle: the drawings,
+        // the clay estimate and the 3D model should all start at the wall.
+        fun overBody(point: HandlePoint): Boolean {
+            val row = shape[(point.y.roundToInt() - top).coerceIn(0, shape.lastIndex)]
+            return outsideDistance(point.x.roundToInt(), row, region.side) < 0f
+        }
         val path = smooth(HandleMidline.trace(width, height, handleMask, region.pixels, touching))
+            .dropWhile(::overBody).dropLastWhile(::overBody)
         if (path.size < 3) return unchanged
         val handle = VesselHandle(
             side = region.side,

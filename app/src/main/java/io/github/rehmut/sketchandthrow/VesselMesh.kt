@@ -127,8 +127,15 @@ object VesselMeshBuilder {
         }
         val traced = profile.handle
         if (traced != null && handle.enabled) {
+            // The body's outer radius by model height, as the rings above model it.
+            val ringHeights = rings.map { height / 2f - (it.y - profile.top) * heightScale }
+            val bodyRadius = { y: Float ->
+                val nearest = ringHeights.indices.minBy { kotlin.math.abs(ringHeights[it] - y) }
+                rings[nearest].radius * heightScale
+            }
             HandleMeshBuilder.append(vertices, faces, traced, handle,
-                HandleMeshBuilder.Placement(profile.axisX, profile.top, height / 2f, heightScale, unitsPerMm))
+                HandleMeshBuilder.Placement(profile.axisX, profile.top, height / 2f, heightScale,
+                    unitsPerMm, bodyRadius, wall))
         }
         return VesselMesh(vertices, faces)
     }

@@ -51,6 +51,44 @@ class ModelConsistencyTest {
         assertEquals(0.9f, inner / outer, 0.01f)
     }
 
+    /** A 100 px wide cylinder on x = 200, 200 rows, with [handle] attached. */
+    private fun cylinderWith(handle: VesselHandle) = VesselProfile(400, 400,
+        (0..200).map { ProfileRow(it.toFloat(), 150f, 250f) }, handle)
+
+    private fun handleVertices(mesh: VesselMesh) =
+        mesh.faces.filter { it.part == MeshPart.HANDLE }.flatMap { it.indices }.toSet().map { mesh.vertices[it] }
+
+    @Test fun handleStartingOverTheBodyDoesNotPierceTheOpening() {
+        // Like the pitcher: the traced path begins with points over the rim, inside
+        // the body's outline, before it leaves the wall.
+        val path = listOf(HandlePoint(205f, 20f, 10f), HandlePoint(230f, 20f, 10f)) +
+            (0..10).map { HandlePoint(270f, 20f + it * 12f, 10f) } + HandlePoint(250f, 140f, 10f)
+        val handle = VesselHandle(HandleSide.RIGHT, path, 20f, 140f, 20f, true)
+        val mesh = VesselMeshBuilder.build(cylinderWith(handle), segments = 16, wallMm = 5.0, heightCm = 20.0)
+        // 200 px = 20 cm: radius 5 cm, wall 0.5 cm, so the opening is 4.5 cm across the radius.
+        val unitsPerPx = (mesh.vertices.maxOf { it.y } - mesh.vertices.minOf { it.y }) / 196f
+        val opening = 45f * unitsPerPx
+        handleVertices(mesh).forEach { v ->
+            assertTrue("handle vertex at x ${v.x} reaches into the opening", v.x > opening)
+        }
+    }
+
+    @Test fun handleEndingShortOfTheWallIsJoinedToIt() {
+        // Like the wavy mug: the traced end stops 10 px outside the modelled wall.
+        val path = (0..10).map { HandlePoint(260f + 20f * kotlin.math.sin(Math.PI * it / 10).toFloat(), 40f + it * 10f, 10f) }
+        val handle = VesselHandle(HandleSide.RIGHT, path, 40f, 140f, 30f, true)
+        val mesh = VesselMeshBuilder.build(cylinderWith(handle), segments = 16, wallMm = 5.0, heightCm = 20.0)
+        val unitsPerPx = (mesh.vertices.maxOf { it.y } - mesh.vertices.minOf { it.y }) / 196f
+        val wall = 50f * unitsPerPx
+        val vertices = handleVertices(mesh)
+        // Both ends reach into the wall: something at or inside the outer surface
+        // near the top join and near the bottom join.
+        val topY = vertices.maxOf { it.y }
+        val bottomY = vertices.minOf { it.y }
+        assertTrue(vertices.filter { it.y > topY - 12 * unitsPerPx }.any { it.x <= wall })
+        assertTrue(vertices.filter { it.y < bottomY + 12 * unitsPerPx }.any { it.x <= wall })
+    }
+
     @Test fun handleMidlineIsSmoothedButKeepsItsEnds() {
         // A C-shaped midline with a sawtooth wobble and a jittery thickness.
         val noisy = (0..40).map { i ->
