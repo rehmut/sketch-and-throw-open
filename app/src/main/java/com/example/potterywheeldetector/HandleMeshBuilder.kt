@@ -17,7 +17,14 @@ internal object HandleMeshBuilder {
     /** Exponent giving a pulled strap its softened-rectangle section. */
     private const val STRAP_ROUNDNESS = 0.35
     /** How far each end is pushed into the body wall, as a fraction of thickness. */
-    private const val JOIN_INSET = 0.6f
+    private const val JOIN_INSET = 0.35f
+    private const val MIN_SAMPLES = 12
+    private const val MAX_SAMPLES = 48
+    private const val SMOOTHING_PASSES = 8
+    /** Points either side averaged into each thickness. */
+    private const val THICKNESS_REACH = 3
+    /** How far thickness may stray from its typical value, as a fraction. */
+    private const val THICKNESS_SPREAD = 0.2f
 
     class Placement(
         /** Image x of the body axis. */
@@ -40,7 +47,9 @@ internal object HandleMeshBuilder {
         placement: Placement,
         segments: Int = 12
     ) {
-        val path = extendIntoBody(handle)
+        // Extend first, then smooth: the turn into the wall is rounded off with the
+        // rest instead of leaving a corner that pinches the tube.
+        val path = smoothPath(extendIntoBody(handle))
         if (path.size < 2) return
         val centers = path.map { point ->
             Pair((point.x - placement.axisX) * placement.scale,
@@ -88,6 +97,60 @@ internal object HandleMeshBuilder {
         }
         cap(rings.first(), centers.first(), reversed = true)
         cap(rings.last(), centers.last(), reversed = false)
+    }
+
+    /**
+     * The traced midline wobbles by a pixel or two from ray to ray, and its
+     * thickness jumps where a ray crosses at a slant; swept as they are, both show
+     * as lumps. Resample evenly along the path, smooth the positions with the ends
+     * held, and ease the thickness towards its typical value.
+     */
+    internal fun smoothPath(path: List<HandlePoint>): List<HandlePoint> {
+        if (path.size < 4) return path
+        val count = path.size.coerceIn(MIN_SAMPLES, MAX_SAMPLES)
+        var points = resample(path, count)
+        repeat(SMOOTHING_PASSES) {
+            points = points.mapIndexed { index, point ->
+                if (index == 0 || index == points.lastIndex) point
+                else {
+                    val a = points[index - 1]
+                    val b = points[index + 1]
+                    point.copy(x = (a.x + 2 * point.x + b.x) / 4f, y = (a.y + 2 * point.y + b.y) / 4f)
+                }
+            }
+        }
+        val eased = points.indices.map { index ->
+            val from = maxOf(0, index - THICKNESS_REACH)
+            val to = minOf(points.lastIndex, index + THICKNESS_REACH)
+            (from..to).map { points[it].thickness }.average().toFloat()
+        }
+        val typical = eased.sorted()[eased.size / 2]
+        return points.mapIndexed { index, point ->
+            point.copy(thickness = eased[index].coerceIn(typical * (1 - THICKNESS_SPREAD),
+                typical * (1 + THICKNESS_SPREAD)))
+        }
+    }
+
+    /** [count] points evenly spaced along the path, thickness interpolated. */
+    private fun resample(path: List<HandlePoint>, count: Int): List<HandlePoint> {
+        val lengths = FloatArray(path.size)
+        for (index in 1 until path.size) {
+            lengths[index] = lengths[index - 1] +
+                hypot(path[index].x - path[index - 1].x, path[index].y - path[index - 1].y)
+        }
+        val total = lengths.last()
+        if (total <= 0f) return path
+        var segment = 1
+        return (0 until count).map { step ->
+            val target = total * step / (count - 1)
+            while (segment < path.lastIndex && lengths[segment] < target) segment++
+            val a = path[segment - 1]
+            val b = path[segment]
+            val span = (lengths[segment] - lengths[segment - 1]).coerceAtLeast(1e-4f)
+            val t = ((target - lengths[segment - 1]) / span).coerceIn(0f, 1f)
+            HandlePoint(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
+                a.thickness + (b.thickness - a.thickness) * t)
+        }
     }
 
     /** Pushes both ends toward the axis so the tube meets the wall without a gap. */

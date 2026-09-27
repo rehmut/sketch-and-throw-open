@@ -29,10 +29,13 @@ data class VesselMesh(val vertices: List<MeshVertex>, val faces: List<MeshFace>)
 }
 
 object VesselMeshBuilder {
-    fun build(profile: VesselProfile, segments: Int = 32, maxRings: Int = 72,
+    fun build(traced: VesselProfile, segments: Int = 32, maxRings: Int = 72,
               wallMm: Double? = null, heightCm: Double? = null, baseMm: Double? = null,
               handle: HandleOptions = HandleOptions()): VesselMesh {
-        require(profile.rows.size >= 2 && segments >= 3 && maxRings >= 2)
+        require(traced.rows.size >= 2 && segments >= 3 && maxRings >= 2)
+        // The same levelled outline the drawing and the clay estimate use, so the
+        // rim and opening here match theirs rather than the foreshortened photo.
+        val profile = ProfileEnds.level(traced)
         // Mask tips can be a single pixel wide. Start and end at stable rows.
         val trim = if (profile.rows.size < 5) 0 else
             max(1, profile.rows.size / 50).coerceAtMost((profile.rows.size - 2) / 2)

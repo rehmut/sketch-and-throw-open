@@ -27,8 +27,12 @@ internal object EndDiameter {
     /** An edge moving less than this share of the other edge's travel is standing still. */
     private const val STILL_EDGE = 0.25f
 
-    /** A diameter and how many rows in from its end it was taken. */
-    data class Reading(val width: Float, val rowsIn: Int)
+    /**
+     * A diameter and how many rows in from its end it was taken. [perspective]
+     * is true when the rows before it are an ellipse or a lean, not the pot's
+     * real shape, and may be flattened to [width].
+     */
+    data class Reading(val width: Float, val rowsIn: Int, val perspective: Boolean = false)
 
     /** [rows] from rim (index 0) to foot. */
     fun rim(rows: List<ProfileRow>): Float = rimReading(rows).width
@@ -61,7 +65,7 @@ internal object EndDiameter {
             return Reading(widths[row], row)
         }
         val levelEnd = (level + window).coerceAtMost(last)
-        val levelled = Reading(widths.subList(0, levelEnd + 1).max(), levelEnd)
+        val levelled = Reading(widths.subList(0, levelEnd + 1).max(), levelEnd, perspective = true)
 
         // An ellipse is already most of the way out halfway to where it levels off.
         val halfway = widths[level / 2]

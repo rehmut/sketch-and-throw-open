@@ -3,6 +3,7 @@ package com.example.potterywheeldetector
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.util.TypedValue
@@ -24,6 +25,11 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
     var showHandle: Boolean = true
         set(value) { field = value; invalidate() }
     var showValues: Boolean = false
+        set(value) { field = value; invalidate() }
+    /** Assumed wall and floor, drawn inside the outline once the height is known. */
+    var wallMm: Double = 5.0
+        set(value) { field = value; invalidate() }
+    var baseMm: Double = 5.0
         set(value) { field = value; invalidate() }
 
     private val density = resources.displayMetrics.density
@@ -65,11 +71,19 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
     }
     /** Paper colour behind a written value, breaking any line it crosses. */
     private val knockout = Paint().apply { color = context.getColor(R.color.key) }
+    /** The clay in section: wall and floor between outline and assumed inside. */
+    private val clay = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.housing_dim) }
+    private val innerLine = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = context.getColor(R.color.graphite_soft)
+        style = Paint.Style.STROKE
+        strokeWidth = density
+    }
     private val labelBox = android.graphics.RectF()
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val shape = profile ?: return
+        // The levelled outline the 3D model and clay estimate use, so all three agree.
+        val shape = profile?.let(ProfileEnds::level) ?: return
         val values = measurements?.takeIf { showValues }
         letter.textSize = sp(if (values != null) 13f else 11f)
         val bounds = SilhouettePainter.bounds(shape)
@@ -86,7 +100,9 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         val axisX = map.x(shape.axisX)
         canvas.drawLine(axisX, map.y(shape.top) - 6 * density, axisX,
             map.y(shape.bottom) + 6 * density, axis)
-        canvas.drawPath(SilhouettePainter.bodyPath(shape, map), outline)
+        val body = SilhouettePainter.bodyPath(shape, map)
+        measurements?.let { drawWall(canvas, shape, map, body, it.heightCm / shape.height) }
+        canvas.drawPath(body, outline)
         val handle = shape.handle
         if (handle != null && showHandle) {
             canvas.drawPath(SilhouettePainter.midlinePath(handle, map), handleLine)
@@ -119,6 +135,32 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
             drawEndDimension(canvas, shape.rows.last(), shape.axisX, values.footDiameterCm / cmPerPixel, map,
                 above = false, "E ${cm(values.footDiameterCm)}")
         }
+    }
+
+    /**
+     * The assumed inside, offset inward by the wall and raised by the floor: the
+     * same construction as the 3D model, so the opening and wall match it.
+     */
+    private fun drawWall(
+        canvas: Canvas, shape: VesselProfile, map: ImageMapping, body: Path, cmPerPixel: Double
+    ) {
+        val wallPx = (wallMm / 10.0 / cmPerPixel).toFloat()
+        val floorY = shape.bottom - (baseMm / 10.0 / cmPerPixel).toFloat()
+        val hollow = shape.rows.filter { it.y < floorY && it.right - it.left > 2 * wallPx }
+        if (hollow.size < 2) return
+        val inside = Path().apply {
+            hollow.forEachIndexed { index, row ->
+                val x = map.x(row.left + wallPx)
+                if (index == 0) moveTo(x, map.y(row.y)) else lineTo(x, map.y(row.y))
+            }
+            val last = hollow.last()
+            lineTo(map.x(last.left + wallPx), map.y(floorY))
+            lineTo(map.x(last.right - wallPx), map.y(floorY))
+            hollow.asReversed().forEach { row -> lineTo(map.x(row.right - wallPx), map.y(row.y)) }
+        }
+        canvas.drawPath(body, clay)
+        canvas.drawPath(inside, knockout)
+        canvas.drawPath(inside, innerLine)
     }
 
     /** Vertical height dimension beside the body, its value written along it when shown. */

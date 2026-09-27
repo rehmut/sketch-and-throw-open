@@ -700,6 +700,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showMeasurements(measured: VesselMeasurements?) {
+        profileView.wallMm = wallMm
+        profileView.baseMm = baseMm
         profileView.measurements = measured
         showSpecRows(specList, measured?.let { VesselReadout.specRows(it) }.orEmpty())
         val handleOn = profile?.handle != null && handleOptions.enabled

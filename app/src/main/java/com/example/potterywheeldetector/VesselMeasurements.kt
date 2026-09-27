@@ -70,10 +70,13 @@ object VesselMeasurementCalculator {
         // Revolve each band of the photographed outside profile. The assumed
         // inside wall has a constant thickness; add a solid floor of the base
         // thickness beneath it. The actual inside and trimmed foot are unknown.
+        // Volume from the levelled outline: the perspective curves at rim and foot
+        // are not clay that is missing.
+        val volumeRows = ProfileEnds.level(profile).rows
         var wallVolumeCm3 = 0.0
-        for (i in 0 until profile.rows.lastIndex) {
-            val a = profile.rows[i]
-            val b = profile.rows[i + 1]
+        for (i in 0 until volumeRows.lastIndex) {
+            val a = volumeRows[i]
+            val b = volumeRows[i + 1]
             fun annulusArea(row: ProfileRow): Double {
                 val outer = max(0.0, diameter(row) / 2.0)
                 val inner = max(0.0, outer - wallCm)

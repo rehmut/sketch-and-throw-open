@@ -53,7 +53,7 @@
             android:padding="@dimen/gutter">
             <ImageView android:id="@+id/heroImage" android:layout_width="match_parent"
                 android:layout_height="0dp" android:layout_weight="1" android:scaleType="fitCenter"
-                android:background="@drawable/bg_hero" android:padding="36dp"
+                android:background="@drawable/bg_hero" android:padding="18dp"
                 android:src="@drawable/hero_illustration"
                 android:contentDescription="Line drawing of a thrown bowl" />
             <TextView style="@style/Label"
