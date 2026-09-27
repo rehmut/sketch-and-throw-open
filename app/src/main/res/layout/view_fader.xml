@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="bottom">
+        <TextView android:id="@+id/faderLabel" style="@style/Body"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:fontFamily="sans-serif-medium" />
+        <TextView android:id="@+id/faderValue" style="@style/Readout"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="15sp" />
+    </LinearLayout>
+    <io.github.rehmut.sketchandthrow.FaderSeekBar android:id="@+id/faderBar"
+        android:layout_width="match_parent" android:layout_height="44dp"
+        android:paddingLeft="7dp" android:paddingRight="7dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView android:id="@+id/faderLow" style="@style/Label"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:fontFamily="monospace" android:textSize="11sp" />
+        <TextView android:id="@+id/faderHigh" style="@style/Label"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:fontFamily="monospace" android:textSize="11sp" />
+    </LinearLayout>
+</merge>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Public page with the privacy policy, hosted on GitHub Pages. -->
+    <string name="privacy_policy_url" translatable="false">https://rehmut.github.io/sketch-and-throw/privacy.html</string>
+</resources>

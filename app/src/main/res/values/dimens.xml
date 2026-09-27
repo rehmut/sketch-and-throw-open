@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="gutter">16dp</dimen>
+    <dimen name="gap">8dp</dimen>
+    <dimen name="gap_large">14dp</dimen>
+    <dimen name="radius_key">6dp</dimen>
+    <dimen name="radius_panel">8dp</dimen>
+    <dimen name="touch">48dp</dimen>
+</resources>

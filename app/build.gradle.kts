@@ -1,23 +1,44 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
+// Upload key for Play, read from keystore.properties in the project root. That file
+// and the keystore stay out of git; without them release builds are left unsigned.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 android {
-    namespace = "com.example.potterywheeldetector"
+    namespace = "io.github.rehmut.sketchandthrow"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.potterywheeldetector"
+        applicationId = "io.github.rehmut.sketchandthrow"
         minSdk = 24
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.7.0"
+        versionCode = 16
+        versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        if (keystoreProperties.containsKey("storeFile")) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Braun-inspired palette: warm grey housing, graphite, one signal colour. -->
+    <color name="housing">#E7E4DE</color>
+    <color name="housing_dim">#DEDAD3</color>
+    <color name="key">#F4F2EE</color>
+    <color name="key_pressed">#E4E0D8</color>
+    <color name="graphite">#1E1E1C</color>
+    <color name="graphite_soft">#3A3A37</color>
+    <color name="scale">#8A867D</color>
+    <color name="rule">#C9C5BC</color>
+    <color name="label">#5A574F</color>
+    <color name="on_graphite">#D8D3C9</color>
+    <color name="signal">#D4541C</color>
+    <color name="led">#3F8F4A</color>
+    <color name="led_ring">#D3E3D2</color>
+    <color name="photo_backdrop">#9D998F</color>
+</resources>
