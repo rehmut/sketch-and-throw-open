@@ -26,7 +26,7 @@ you are responsible for the final answers.
   > Best results: one pot, photographed straight-on at mid-height, on a plain background.
 
 - **Category**: Tools (alternative: Art & Design)
-- **Contact email**: [CONTACT EMAIL]
+- **Contact email**: FerdinandKirchner@gmx.de
 - **Privacy policy**: https://rehmut.github.io/sketch-and-throw/privacy.html
 - **Graphics**: `icon-512.png`, `feature-graphic.png`, and phone screenshots from `screenshots/`
 
