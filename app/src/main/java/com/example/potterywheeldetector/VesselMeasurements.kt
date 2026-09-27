@@ -47,6 +47,11 @@ object VesselMeasurementCalculator {
         // The first and last few mask rows often taper to a one-pixel tip.
         val trim = max(1, profile.rows.size / 50)
         val rows = profile.rows
+        val widths = rows.map { it.right - it.left }
+        // Rim and foot as a photo shows them are ellipses; the narrowest-wall search
+        // starts below the rim's and stops above the foot's.
+        val rimReading = EndDiameter.rimReading(widths)
+        val footReading = EndDiameter.footReading(widths)
         val footWidth = rows[rows.lastIndex - trim].right - rows[rows.lastIndex - trim].left
         val widestWidth = rows.maxOf { it.right - it.left }
         val minWallWidth = footWidth + (widestWidth - footWidth) * 0.30f
@@ -56,9 +61,10 @@ object VesselMeasurementCalculator {
         val excludedBaseRows = max(rows.size * 15 / 100,
             if (candidate == null || widestWidth <= footWidth * 1.05f)
                 rows.size * 15 / 100 else rows.lastIndex - candidate)
-        val bodyEnd = min(rows.lastIndex - trim, rows.lastIndex - excludedBaseRows)
-            .coerceAtLeast(trim)
-        val bodyRows = rows.subList(trim, bodyEnd + 1)
+        val bodyStart = max(trim, rimReading.rowsIn).coerceAtMost(rows.lastIndex)
+        val bodyEnd = minOf(rows.lastIndex - trim, rows.lastIndex - excludedBaseRows,
+            rows.lastIndex - footReading.rowsIn).coerceAtLeast(bodyStart)
+        val bodyRows = rows.subList(bodyStart, bodyEnd + 1)
         val narrowest = bodyRows.minBy { it.right - it.left }
         fun diameter(row: ProfileRow) = (row.right - row.left) * cmPerPixel
 
@@ -88,7 +94,7 @@ object VesselMeasurementCalculator {
             diameter(widest), (profile.bottom - widest.y) * cmPerPixel,
             diameter(narrowest), (profile.bottom - narrowest.y) * cmPerPixel,
             (profile.bottom - rows[bodyEnd].y) * cmPerPixel,
-            diameter(profile.rows[trim]), diameter(profile.rows[profile.rows.lastIndex - trim]),
+            rimReading.width * cmPerPixel, footReading.width * cmPerPixel,
             clayGrams,
             handleVolumeCm3 * WET_CLAY_GRAMS_PER_CM3,
             traced?.let { (it.lowerJoinY - it.upperJoinY) * cmPerPixel },

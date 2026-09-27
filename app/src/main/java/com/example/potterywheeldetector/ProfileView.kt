@@ -112,8 +112,10 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
             drawLabel(canvas, text, axisX + offset, y, align)
         }
         if (values != null) {
-            drawEndDimension(canvas, shape.rows.first(), map, above = true, "D ${cm(values.rimDiameterCm)}")
-            drawEndDimension(canvas, shape.rows.last(), map, above = false, "E ${cm(values.footDiameterCm)}")
+            drawEndDimension(canvas, shape.rows.first(), values.rimDiameterCm / cmPerPixel, map,
+                above = true, "D ${cm(values.rimDiameterCm)}")
+            drawEndDimension(canvas, shape.rows.last(), values.footDiameterCm / cmPerPixel, map,
+                above = false, "E ${cm(values.footDiameterCm)}")
         }
     }
 
@@ -139,13 +141,20 @@ class ProfileView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         canvas.restore()
     }
 
-    /** Rim or foot diameter: a dimension line just beyond the end, with extension ticks. */
-    private fun drawEndDimension(canvas: Canvas, row: ProfileRow, map: ImageMapping, above: Boolean, text: String) {
+    /**
+     * Rim or foot diameter: a dimension line just beyond the end, with extension
+     * ticks, spanning the measured [diameterPx] rather than the end row, which a
+     * photo shows narrowed by perspective.
+     */
+    private fun drawEndDimension(
+        canvas: Canvas, row: ProfileRow, diameterPx: Double, map: ImageMapping, above: Boolean, text: String
+    ) {
         val gap = 12 * density
         val edgeY = map.y(row.y)
         val y = if (above) edgeY - gap else edgeY + gap
-        val left = map.x(row.left)
-        val right = map.x(row.right)
+        val center = (row.left + row.right) / 2f
+        val left = map.x(center - diameterPx.toFloat() / 2f)
+        val right = map.x(center + diameterPx.toFloat() / 2f)
         canvas.drawLine(left, edgeY, left, y + (if (above) -3 else 3) * density, extension)
         canvas.drawLine(right, edgeY, right, y + (if (above) -3 else 3) * density, extension)
         canvas.drawLine(left, y, right, y, dimension)
