@@ -14,6 +14,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
@@ -93,6 +94,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var exportButton: Button
 
     private lateinit var settings: SettingsScreen
+    private lateinit var measureLayout: MeasureLayout
 
     private lateinit var vesselStore: VesselStore
     private lateinit var defaultsStore: ClayDefaultsStore
@@ -304,11 +306,25 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bindMeasureStep() {
+        measureLayout = MeasureLayout(findViewById(R.id.measureContent), findViewById(R.id.measureTop),
+            profileView, findViewById(R.id.heightBlock))
         heightInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-            override fun afterTextChanged(s: Editable?) { updateMeasurements() }
+            override fun afterTextChanged(s: Editable?) {
+                updateMeasurements()
+                if (enteredHeight() == null) measureLayout.setExpanded(false)
+            }
         })
+        // The drawing grows once the height is entered, not on every keystroke.
+        heightInput.setOnEditorActionListener { _, _, _ ->
+            commitHeight()
+            false
+        }
+        heightInput.setOnFocusChangeListener { _, focused -> if (!focused) commitHeight() }
+        profileView.setOnClickListener {
+            if (enteredHeight() != null) measureLayout.setExpanded(!measureLayout.expanded)
+        }
         findViewById<View>(R.id.claySettingsStrip).setOnClickListener { openSettings(fromVessel = true) }
     }
 
@@ -467,6 +483,7 @@ class MainActivity : ComponentActivity() {
         galleryImage.bitmap = null
         galleryImage.seed = null
         heightInput.setText("")
+        measureLayout.setExpanded(false, animate = false)
         applyProfile(null)
     }
 
@@ -647,6 +664,14 @@ class MainActivity : ComponentActivity() {
 
     // Measurements
 
+    private fun commitHeight() {
+        if (enteredHeight() == null) return
+        getSystemService(InputMethodManager::class.java)
+            ?.hideSoftInputFromWindow(heightInput.windowToken, 0)
+        heightInput.clearFocus()
+        measureLayout.setExpanded(true)
+    }
+
     private fun enteredHeight(): Double? =
         heightInput.text.toString().replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 && it <= 500.0 }
 
@@ -676,14 +701,7 @@ class MainActivity : ComponentActivity() {
 
     private fun showMeasurements(measured: VesselMeasurements?) {
         profileView.measurements = measured
-        specList.removeAllViews()
-        measured?.let { values ->
-            VesselReadout.specRows(values).forEach { row ->
-                specList.addView(View(this).apply { setBackgroundColor(getColor(R.color.rule)) },
-                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1))
-                specList.addView(specRow(row))
-            }
-        }
+        showSpecRows(specList, measured?.let { VesselReadout.specRows(it) }.orEmpty())
         val handleOn = profile?.handle != null && handleOptions.enabled
         if (measured == null) {
             clayTotalText.text = "—"
@@ -703,30 +721,6 @@ class MainActivity : ComponentActivity() {
             "${VesselReadout.millimetres(Math.round(it * 100) / 10.0)} mm"
         } ?: "—"
         handleClayText.text = if (handleOn) "+ ${VesselReadout.grams(split.handleGrams)}" else "off"
-    }
-
-    private fun specRow(row: VesselReadout.SpecRow) = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        val density = resources.displayMetrics.density
-        setPadding(0, (9 * density).toInt(), 0, (9 * density).toInt())
-        contentDescription = "${row.letter}, ${row.label}: ${row.value}"
-        addView(TextView(this@MainActivity).apply {
-            text = row.letter
-            typeface = Typeface.MONOSPACE
-            textSize = 11f
-            setTextColor(getColor(R.color.label))
-        }, LinearLayout.LayoutParams((24 * density).toInt(), LinearLayout.LayoutParams.WRAP_CONTENT))
-        addView(TextView(this@MainActivity).apply {
-            text = row.label
-            textSize = 13f
-            setTextColor(getColor(R.color.graphite))
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        addView(TextView(this@MainActivity).apply {
-            text = row.value
-            typeface = Typeface.MONOSPACE
-            textSize = 13f
-            setTextColor(getColor(R.color.graphite))
-        })
     }
 
     // Settings
@@ -785,6 +779,7 @@ class MainActivity : ComponentActivity() {
         photo = bitmap
         galleryImage.bitmap = bitmap
         heightInput.setText(entry.heightCm?.toString() ?: "")
+        measureLayout.setExpanded(entry.heightCm != null, animate = false)
         applyProfile(entry.profile)
         step = Step.MEASURE
         show(Screen.VESSEL)
