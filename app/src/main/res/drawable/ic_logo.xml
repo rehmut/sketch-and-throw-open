@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The app mark: the wheel as a ring, the centred clay as one signal dot. -->
+<!-- The app mark: a sketchbook page with a bowl, as in the launcher icon. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <path android:pathData="M12,3a9,9 0 1,1 0,18a9,9 0 1,1 0,-18"
-        android:fillColor="@android:color/transparent" android:strokeColor="#1E1E1C"
-        android:strokeWidth="2" />
-    <path android:pathData="M12,9.4a2.6,2.6 0 1,1 0,5.2a2.6,2.6 0 1,1 0,-5.2"
-        android:fillColor="#D4541C" />
+    android:width="24dp" android:height="28dp"
+    android:viewportWidth="48" android:viewportHeight="56">
+    <group android:translateX="-30" android:translateY="-27">
+    <path android:pathData="M36.6,30 H71.4 A3.6,3.6 0 0 1 75,33.6 V76.4 A3.6,3.6 0 0 1 71.4,80 H36.6 A3.6,3.6 0 0 1 33,76.4 V33.6 A3.6,3.6 0 0 1 36.6,30 Z" android:fillColor="#1E1E1C" />
+    <path android:pathData="M43,27.8a2.2,2.2 0 1,1 0,4.4a2.2,2.2 0 1,1 0,-4.4 M54,27.8a2.2,2.2 0 1,1 0,4.4a2.2,2.2 0 1,1 0,-4.4 M65,27.8a2.2,2.2 0 1,1 0,4.4a2.2,2.2 0 1,1 0,-4.4" android:fillColor="#E7E4DE" />
+    <path android:pathData="M36.8,50.25a17.2,3.25 0 1,0 34.4,0a17.2,3.25 0 1,0 -34.4,0" android:fillColor="@android:color/transparent" android:strokeColor="#F4F2EE" android:strokeWidth="3" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M36.8,50.2 C37.8,63 45,68 54,68 C63,68 70.2,63 71.2,50.2 M49.5,68 L50.3,71.5 H57.7 L58.5,68" android:fillColor="@android:color/transparent" android:strokeColor="#F4F2EE" android:strokeWidth="3" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    </group>
 </vector>

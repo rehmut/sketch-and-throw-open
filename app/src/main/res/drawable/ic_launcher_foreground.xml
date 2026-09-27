@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon foreground: the ring and dot inside the 66 dp safe zone. -->
+<!-- Adaptive icon foreground: a sketchbook page with a bowl drawn on it, inside the 66 dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:pathData="M54,34a20,20 0 1,1 0,40a20,20 0 1,1 0,-40"
-        android:fillColor="@android:color/transparent" android:strokeColor="#F4F2EE"
-        android:strokeWidth="4.5" />
-    <path android:pathData="M54,48a6,6 0 1,1 0,12a6,6 0 1,1 0,-12" android:fillColor="#D4541C" />
+    <path android:pathData="M36.6,30 H71.4 A3.6,3.6 0 0 1 75,33.6 V76.4 A3.6,3.6 0 0 1 71.4,80 H36.6 A3.6,3.6 0 0 1 33,76.4 V33.6 A3.6,3.6 0 0 1 36.6,30 Z" android:fillColor="#F4F2EE" />
+    <path android:pathData="M43,27.8a2.2,2.2 0 1,1 0,4.4a2.2,2.2 0 1,1 0,-4.4 M54,27.8a2.2,2.2 0 1,1 0,4.4a2.2,2.2 0 1,1 0,-4.4 M65,27.8a2.2,2.2 0 1,1 0,4.4a2.2,2.2 0 1,1 0,-4.4" android:fillColor="#1E1E1C" />
+    <path android:pathData="M36.8,50.25a17.2,3.25 0 1,0 34.4,0a17.2,3.25 0 1,0 -34.4,0" android:fillColor="@android:color/transparent" android:strokeColor="#1E1E1C" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M36.8,50.2 C37.8,63 45,68 54,68 C63,68 70.2,63 71.2,50.2 M49.5,68 L50.3,71.5 H57.7 L58.5,68" android:fillColor="@android:color/transparent" android:strokeColor="#1E1E1C" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" />
 </vector>
