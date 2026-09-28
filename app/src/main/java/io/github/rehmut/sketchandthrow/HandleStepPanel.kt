@@ -6,14 +6,16 @@ import android.widget.Switch
 import android.widget.TextView
 
 /**
- * The controls of step 02 and the "find a handle" switch of step 01: detection
- * on or off, cross-section and assumed width. Changes go out through
- * [onDetection] and [onOptions]; [render] shows the current state.
+ * The controls of step 02 adjust and the "find a handle" switch of step 01: the
+ * camera angle, handle detection on or off, cross-section and assumed width.
+ * Changes go out through [onDetection], [onOptions] and [onAngle]; [render]
+ * shows the current state.
  */
 internal class HandleStepPanel(
     root: View,
     private val onDetection: (Boolean) -> Unit,
-    private val onOptions: (HandleOptions) -> Unit
+    private val onOptions: (HandleOptions) -> Unit,
+    private val onAngle: (Int) -> Unit
 ) {
     private val context = root.context
     private val switches: List<Switch> = listOf(root.findViewById(R.id.handleSwitch),
@@ -24,6 +26,7 @@ internal class HandleStepPanel(
     private val controls: View = root.findViewById(R.id.handleControls)
     private val sideText: TextView = root.findViewById(R.id.handleSideText)
     private val widthFader: FaderControl = root.findViewById(R.id.handleWidthFader)
+    private val angleFader: FaderControl = root.findViewById(R.id.viewAngleFader)
     private val sectionButtons: Map<HandleSection, Button> = mapOf(
         HandleSection.ROUND to root.findViewById(R.id.sectionRound),
         HandleSection.OVAL to root.findViewById(R.id.sectionOval),
@@ -43,13 +46,16 @@ internal class HandleStepPanel(
         widthFader.onValueChange = { value, fromUser ->
             if (fromUser && !syncing) onOptions(options.copy(widthMm = value))
         }
+        angleFader.formatter = { "${it.toInt()}°" }
+        angleFader.onValueChange = { value, fromUser -> if (fromUser && !syncing) onAngle(value.toInt()) }
     }
 
-    fun render(handle: VesselHandle?, current: HandleOptions) {
+    fun render(handle: VesselHandle?, current: HandleOptions, viewDegrees: Int) {
         options = current
         syncing = true
         switches.forEach { it.isChecked = current.enabled }
         widthFader.value = current.widthMm
+        angleFader.value = viewDegrees.toDouble()
         syncing = false
         noHandleCard.visibility = if (handle == null) View.VISIBLE else View.GONE
         controls.visibility = if (handle == null) View.GONE else View.VISIBLE

@@ -20,8 +20,8 @@ android {
         applicationId = "io.github.rehmut.sketchandthrow"
         minSdk = 24
         targetSdk = 36
-        versionCode = 18
-        versionName = "1.0.2"
+        versionCode = 19
+        versionName = "1.0.3"
     }
 
     signingConfigs {

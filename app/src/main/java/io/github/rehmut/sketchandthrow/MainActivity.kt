@@ -93,6 +93,9 @@ class MainActivity : ComponentActivity() {
     // The vessel being worked on.
     private var photo: Bitmap? = null
     private var profile: VesselProfile? = null
+    /** [profile] as the pot is, the camera angle taken out; drawings, sizes and 3D use it. */
+    private var corrected: VesselProfile? = null
+    private var viewDegrees = 0
     private var mesh: VesselMesh? = null
     private var focus: Rect? = null
     private var seed: PointF? = null
@@ -275,7 +278,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bindHandleStep() {
-        handleStep = HandleStepPanel(findViewById(R.id.root), ::setHandleDetection, ::updateHandleOptions)
+        handleStep = HandleStepPanel(findViewById(R.id.root), ::setHandleDetection, ::updateHandleOptions,
+            ::setViewAngle)
     }
 
     private fun bindMeasureStep() {
@@ -443,6 +447,7 @@ class MainActivity : ComponentActivity() {
         vesselName = null
         photo = null
         profile = null
+        viewDegrees = 0
         mesh = null
         focus = null
         seed = null
@@ -595,8 +600,7 @@ class MainActivity : ComponentActivity() {
     private fun applyProfile(traced: VesselProfile?) {
         profile = traced
         galleryImage.profile = traced
-        profileView.profile = traced
-        handleView.profile = traced
+        applyCorrection()
         val ready = traced != null
         exportButton.isEnabled = ready
         if (screen == Screen.VESSEL) headerAction.isEnabled = ready
@@ -604,7 +608,21 @@ class MainActivity : ComponentActivity() {
         updateMeasurements()
     }
 
-    // Handle step
+    /** The photo overlay keeps the traced outline; everything else sees the pot. */
+    private fun applyCorrection() {
+        corrected = profile?.let { ViewCorrection.correct(it, viewDegrees.toDouble()) }
+        profileView.profile = corrected
+        handleView.profile = corrected
+    }
+
+    // Adjust step
+
+    private fun setViewAngle(degrees: Int) {
+        if (degrees == viewDegrees) return
+        viewDegrees = degrees
+        applyCorrection()
+        updateMeasurements()
+    }
 
     private fun updateHandleOptions(options: HandleOptions) {
         handleOptions = options.copy(widthMm = options.widthMm.coerceIn(HandleOptions.WIDTH_RANGE))
@@ -626,7 +644,7 @@ class MainActivity : ComponentActivity() {
         handleView.handleEnabled = on
         galleryImage.showHandle = on
         profileView.showHandle = on
-        handleStep.render(profile?.handle, handleOptions)
+        handleStep.render(profile?.handle, handleOptions, viewDegrees)
     }
 
     // Measurements
@@ -643,7 +661,7 @@ class MainActivity : ComponentActivity() {
         heightInput.text.toString().replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 && it <= 500.0 }
 
     private fun updateMeasurements() {
-        val shape = profile
+        val shape = corrected
         claySettingsText.text = VesselReadout.settingsSummary(wallMm, baseMm, allowancePercent)
         if (shape == null) {
             showMeasurements(null)
@@ -707,7 +725,7 @@ class MainActivity : ComponentActivity() {
         val traced = profile ?: return
         val saved = vesselStore.find(currentSavedId)
         SaveVesselDialog(this, vesselStore.folders(), saved, vesselName,
-            VesselCategory.suggest(traced, handleOptions.enabled),
+            VesselCategory.suggest(corrected ?: traced, handleOptions.enabled),
             numberedName = { category ->
                 category.defaultName(vesselStore.recent(Int.MAX_VALUE).count { it.category == category })
             },
@@ -722,7 +740,7 @@ class MainActivity : ComponentActivity() {
         ) { name, category, folder ->
             try {
                 val entry = vesselStore.save(currentSavedId, folder.id, name, bitmap, traced,
-                    enteredHeight(), wallMm, allowancePercent, baseMm, handleOptions, category)
+                    enteredHeight(), wallMm, allowancePercent, baseMm, handleOptions, category, viewDegrees)
                 currentSavedId = entry.id
                 vesselName = entry.name
                 titleText.text = entry.name
@@ -745,6 +763,7 @@ class MainActivity : ComponentActivity() {
         currentSavedId = entry.id
         vesselName = entry.name
         handleOptions = entry.handleOptions
+        viewDegrees = entry.viewDegrees
         photo = bitmap
         galleryImage.bitmap = bitmap
         heightInput.setText(entry.heightCm?.toString() ?: "")
