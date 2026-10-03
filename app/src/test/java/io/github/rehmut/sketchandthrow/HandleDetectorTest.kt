@@ -50,6 +50,15 @@ class HandleDetectorTest {
         assertEquals(15f, handle.path.map { it.thickness }.sorted()[handle.path.size / 2], 5f)
     }
 
+    @Test fun sliverAlongTheBodyBelowTheJoinIsNotPartOfTheHandle() {
+        // A sliver of background hugging the body's bulge, joined to the handle's
+        // lower end: the midline must stop where the handle meets the wall.
+        val sliver: (Int, Int) -> Boolean = { x, y -> x in bodyRight + 1..bodyRight + 4 && y in 160..225 }
+        val handle = profileOf(mask(body, ringHandle(bodyRight, 1, centreY = 110), sliver))!!.handle!!
+        assertTrue("lower join ${handle.lowerJoinY}", handle.lowerJoinY < 180f)
+        assertTrue("path reaches ${handle.path.maxOf { it.y }}", handle.path.maxOf { it.y } < 180f)
+    }
+
     @Test fun handleJoinsDoNotBulgeTheBodyOutline() {
         val profile = profileOf(mask(body, ringHandle(bodyRight, 1)))!!
         // Rows 70..85 and 175..190 are where the ring meets the body; without

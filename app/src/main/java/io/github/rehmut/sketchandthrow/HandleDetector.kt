@@ -33,6 +33,8 @@ internal object HandleDetector {
     /** Largest vertical gap, as a height fraction, bridged between pieces of one handle. */
     private const val MAX_PIECE_GAP = 0.12f
     private const val MIN_EYE_ROWS = 3
+    /** Path ends thinner than this share of the handle's typical thickness are a sliver along the wall. */
+    private const val THIN_END = 0.4f
     private const val REFINE_PASSES = 3
 
     private class Region(
@@ -104,8 +106,8 @@ internal object HandleDetector {
             val row = shape[(point.y.roundToInt() - top).coerceIn(0, shape.lastIndex)]
             return outsideDistance(point.x.roundToInt(), row, region.side) < 0f
         }
-        val path = smooth(HandleMidline.trace(width, height, handleMask, region.pixels, touching))
-            .dropWhile(::overBody).dropLastWhile(::overBody)
+        val path = trimThinEnds(smooth(HandleMidline.trace(width, height, handleMask, region.pixels, touching))
+            .dropWhile(::overBody).dropLastWhile(::overBody))
         if (path.size < 3) return unchanged
         val handle = VesselHandle(
             side = region.side,
@@ -245,6 +247,18 @@ internal object HandleDetector {
             if (touchesBody) pieces.add(Region(side, queue.copyOf(tail), minY, maxY))
         }
         return pieces
+    }
+
+    /**
+     * A bulging body often leaves a thin strip of background-coloured pixels
+     * hugging the wall beyond a join, and the midline would follow it down the
+     * side of the pot. The handle itself never gets that thin, so cut it there.
+     */
+    private fun trimThinEnds(points: List<HandlePoint>): List<HandlePoint> {
+        if (points.size < 3) return points
+        val floor = median(points.map { it.thickness }) * THIN_END
+        fun thin(point: HandlePoint) = point.thickness < floor
+        return points.dropWhile(::thin).dropLastWhile(::thin)
     }
 
     private fun smooth(points: List<HandlePoint>): List<HandlePoint> {
