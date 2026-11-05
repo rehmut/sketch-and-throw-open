@@ -28,13 +28,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageProxy
 import androidx.core.content.ContextCompat
-import com.google.mediapipe.framework.image.BitmapImageBuilder
-import com.google.mediapipe.framework.image.ByteBufferExtractor
-import com.google.mediapipe.tasks.components.containers.NormalizedKeypoint
-import com.google.mediapipe.tasks.core.BaseOptions
-import com.google.mediapipe.tasks.vision.interactivesegmenter.InteractiveSegmenter
-import com.google.mediapipe.tasks.vision.interactivesegmenter.InteractiveSegmenterOptions
-import com.google.mediapipe.tasks.vision.interactivesegmenter.Stroke
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.objects.ObjectDetection
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
@@ -69,16 +62,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var sensitivity: FaderControl
     private lateinit var outlineStatus: TextView
     private lateinit var handleView: HandleView
-    private lateinit var noHandleCard: View
-    private lateinit var handleControls: View
-    private lateinit var handleSideText: TextView
-    private lateinit var handleSwitch: Switch
-    private lateinit var detectHandleSwitch: Switch
-    private lateinit var noHandleTitle: TextView
-    private lateinit var noHandleText: TextView
-    private lateinit var sectionButtons: Map<HandleSection, Button>
+    private lateinit var handleStep: HandleStepPanel
     private lateinit var handleThicknessText: TextView
-    private lateinit var handleWidthFader: FaderControl
     private lateinit var handleClayText: TextView
     private lateinit var profileView: ProfileView
     private lateinit var heightInput: EditText
@@ -99,7 +84,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var vesselStore: VesselStore
     private lateinit var defaultsStore: ClayDefaultsStore
     private val worker = Executors.newSingleThreadExecutor()
-    private var interactiveSegmenter: InteractiveSegmenter? = null
+    private val segmenter = OutlineSegmenter(this)
 
     private var screen = Screen.HOME
     private var settingsReturn = Screen.HOME
@@ -108,6 +93,9 @@ class MainActivity : ComponentActivity() {
     // The vessel being worked on.
     private var photo: Bitmap? = null
     private var profile: VesselProfile? = null
+    /** [profile] as the pot is, the camera angle taken out; drawings, sizes and 3D use it. */
+    private var corrected: VesselProfile? = null
+    private var viewDegrees = 0
     private var mesh: VesselMesh? = null
     private var focus: Rect? = null
     private var seed: PointF? = null
@@ -123,9 +111,11 @@ class MainActivity : ComponentActivity() {
     private var mlConfidence: FloatArray? = null
     private var mlModelState = ""
     private var mlRequestVersion = -1
+    /** Point on the handle for a second segmentation pass, and that pass's result. */
+    private var handleSeed: PointF? = null
+    private var handleConfidence: FloatArray? = null
+    private var handleColourMask: BooleanArray? = null
     private var mlPoint: PointF? = null
-    /** Set while code, not the user, moves a control, so listeners do not echo. */
-    private var syncingControls = false
 
     private val requestCamera = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -224,20 +214,7 @@ class MainActivity : ComponentActivity() {
         sensitivity = findViewById(R.id.sensitivity)
         outlineStatus = findViewById(R.id.outlineStatus)
         handleView = findViewById(R.id.handleView)
-        noHandleCard = findViewById(R.id.noHandleCard)
-        handleControls = findViewById(R.id.handleControls)
-        handleSideText = findViewById(R.id.handleSideText)
-        handleSwitch = findViewById(R.id.handleSwitch)
-        detectHandleSwitch = findViewById(R.id.detectHandleSwitch)
-        noHandleTitle = findViewById(R.id.noHandleTitle)
-        noHandleText = findViewById(R.id.noHandleText)
-        sectionButtons = mapOf(
-            HandleSection.ROUND to findViewById(R.id.sectionRound),
-            HandleSection.OVAL to findViewById(R.id.sectionOval),
-            HandleSection.STRAP to findViewById(R.id.sectionStrap)
-        )
         handleThicknessText = findViewById(R.id.handleThicknessText)
-        handleWidthFader = findViewById(R.id.handleWidthFader)
         handleClayText = findViewById(R.id.handleClayText)
         profileView = findViewById(R.id.profileView)
         heightInput = findViewById(R.id.heightInput)
@@ -278,10 +255,19 @@ class MainActivity : ComponentActivity() {
 
     private fun bindOutlineStep() {
         galleryImage.onVesselTap = { point ->
-            seed = point
-            galleryImage.seed = point
-            if (mlOutlineSwitch.isChecked) photo?.let { requestMlOutline(it, photoVersion) }
-            runExtraction()
+            val image = photo
+            val onHandle = handleOptions.enabled && mlOutlineSwitch.isChecked && image != null &&
+                profile?.let { HandleSeeding.isBesideBody(it, point.x, point.y) } == true
+            if (onHandle && image != null) {
+                handleSeed = point
+                requestHandleOutline(image, point, photoVersion)
+            } else {
+                seed = point
+                galleryImage.seed = point
+                clearHandleSeed()
+                if (mlOutlineSwitch.isChecked) photo?.let { requestMlOutline(it, photoVersion) }
+                runExtraction()
+            }
         }
         sensitivity.onRelease = { runExtraction() }
         mlOutlineSwitch.setOnCheckedChangeListener { _, checked ->
@@ -292,17 +278,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bindHandleStep() {
-        listOf(handleSwitch, detectHandleSwitch).forEach { toggle ->
-            toggle.setOnCheckedChangeListener { _, checked ->
-                if (!syncingControls) setHandleDetection(checked)
-            }
-        }
-        sectionButtons.forEach { (section, button) ->
-            button.setOnClickListener { updateHandleOptions(handleOptions.copy(section = section)) }
-        }
-        handleWidthFader.onValueChange = { value, fromUser ->
-            if (fromUser && !syncingControls) updateHandleOptions(handleOptions.copy(widthMm = value))
-        }
+        handleStep = HandleStepPanel(findViewById(R.id.root), ::setHandleDetection, ::updateHandleOptions,
+            ::setViewAngle)
     }
 
     private fun bindMeasureStep() {
@@ -470,6 +447,7 @@ class MainActivity : ComponentActivity() {
         vesselName = null
         photo = null
         profile = null
+        viewDegrees = 0
         mesh = null
         focus = null
         seed = null
@@ -477,6 +455,7 @@ class MainActivity : ComponentActivity() {
         mlModelState = ""
         mlRequestVersion = -1
         mlPoint = null
+        clearHandleSeed()
         wallMm = defaults.wallMm
         baseMm = defaults.baseMm
         allowancePercent = defaults.allowancePercent
@@ -530,27 +509,7 @@ class MainActivity : ComponentActivity() {
         setStatus(mlModelState)
         worker.execute {
             try {
-                val segmenter = interactiveSegmenter ?: InteractiveSegmenter.createFromOptions(
-                    this,
-                    InteractiveSegmenterOptions.builder().setBaseOptions(
-                        BaseOptions.builder().setModelAssetPath("interactive_segmentation.task").build()
-                    ).build()
-                ).also { interactiveSegmenter = it }
-                segmenter.setImage(BitmapImageBuilder(bitmap).build())
-                val stroke = Stroke.builder()
-                    .setBrushMode(Stroke.BrushMode.POSITIVE)
-                    .setPoints(listOf(NormalizedKeypoint.create(
-                        (point.x / bitmap.width).coerceIn(0f, 1f),
-                        (point.y / bitmap.height).coerceIn(0f, 1f)
-                    )))
-                    .setCompleted(true)
-                    .build()
-                val mask = segmenter.segment(listOf(stroke))
-                val values = FloatArray(mask.width * mask.height)
-                ByteBufferExtractor.extract(mask).asFloatBuffer().apply {
-                    rewind()
-                    get(values)
-                }
+                val values = segmenter.confidence(bitmap, point)
                 runOnUiThread {
                     if (version != photoVersion || mlPoint != point || isDestroyed) return@runOnUiThread
                     mlConfidence = values
@@ -568,6 +527,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Segments again from a point on the handle and merges it in, then retraces. */
+    private fun requestHandleOutline(bitmap: Bitmap, point: PointF, version: Int) {
+        if (version != photoVersion || isDestroyed || worker.isShutdown) return
+        setStatus("Looking closer at the handle…")
+        val level = sensitivity.value.toInt()
+        worker.execute {
+            val values = try { segmenter.confidence(bitmap, point) } catch (error: Exception) { null }
+            // Background colour separates the handle from the eye beside it.
+            val colour = VesselProfileExtractor.colourMask(bitmap, level)
+            runOnUiThread {
+                if (version != photoVersion || handleSeed != point || isDestroyed) return@runOnUiThread
+                handleConfidence = values
+                handleColourMask = colour
+                runExtraction()
+            }
+        }
+    }
+
+    private fun clearHandleSeed() {
+        handleSeed = null
+        handleConfidence = null
+        handleColourMask = null
+    }
+
     private fun runExtraction() {
         if (isDestroyed || worker.isShutdown) return
         val image = photo ?: return
@@ -576,13 +559,15 @@ class MainActivity : ComponentActivity() {
         val target = focus?.let(::Rect)
         val selectedPoint = seed?.let { PointF(it.x, it.y) }
         val level = sensitivity.value.toInt()
-        val confidence = if (mlOutlineSwitch.isChecked) mlConfidence else null
         val findHandle = handleOptions.enabled
+        val confidence = if (mlOutlineSwitch.isChecked) mlConfidence else null
+        val handlePass = if (findHandle) handleConfidence else null
+        val handleColour = handleColourMask?.takeIf { handlePass != null }
         setStatus("Tracing outline…")
         worker.execute {
             val mlProfile = confidence?.let {
                 VesselProfileExtractor.extractFromConfidence(image.width, image.height,
-                    it, target, selectedPoint, level, findHandle)
+                    it, target, selectedPoint, level, findHandle, handlePass, handleColour)
             }
             val traced = mlProfile ?: VesselProfileExtractor.extract(
                 image, target, selectedPoint, level, findHandle)
@@ -590,6 +575,16 @@ class MainActivity : ComponentActivity() {
                 if (photoId != photoVersion || runId != extractionVersion || isDestroyed)
                     return@runOnUiThread
                 applyProfile(traced)
+                // First trace with a handle: segment once more from the handle itself,
+                // where the model is surer of it than from the middle of the body.
+                val found = traced?.handle
+                if (mlProfile != null && findHandle && found != null && handleSeed == null) {
+                    val probe = HandleSeeding.probe(found)
+                    PointF(probe.x, probe.y).let { point ->
+                        handleSeed = point
+                        requestHandleOutline(image, point, photoId)
+                    }
+                }
                 val handleNote = traced?.handle?.let { " Handle on the ${it.side.name.lowercase()}." } ?: ""
                 setStatus(when {
                     traced == null ->
@@ -605,8 +600,7 @@ class MainActivity : ComponentActivity() {
     private fun applyProfile(traced: VesselProfile?) {
         profile = traced
         galleryImage.profile = traced
-        profileView.profile = traced
-        handleView.profile = traced
+        applyCorrection()
         val ready = traced != null
         exportButton.isEnabled = ready
         if (screen == Screen.VESSEL) headerAction.isEnabled = ready
@@ -614,7 +608,21 @@ class MainActivity : ComponentActivity() {
         updateMeasurements()
     }
 
-    // Handle step
+    /** The photo overlay keeps the traced outline; everything else sees the pot. */
+    private fun applyCorrection() {
+        corrected = profile?.let { ViewCorrection.correct(it, viewDegrees.toDouble()) }
+        profileView.profile = corrected
+        handleView.profile = corrected
+    }
+
+    // Adjust step
+
+    private fun setViewAngle(degrees: Int) {
+        if (degrees == viewDegrees) return
+        viewDegrees = degrees
+        applyCorrection()
+        updateMeasurements()
+    }
 
     private fun updateHandleOptions(options: HandleOptions) {
         handleOptions = options.copy(widthMm = options.widthMm.coerceIn(HandleOptions.WIDTH_RANGE))
@@ -632,37 +640,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun renderHandleStep() {
-        val handle = profile?.handle
         val on = handleOptions.enabled
-        syncingControls = true
-        handleSwitch.isChecked = on
-        detectHandleSwitch.isChecked = on
-        handleWidthFader.value = handleOptions.widthMm
-        syncingControls = false
-        noHandleCard.visibility = if (handle == null) View.VISIBLE else View.GONE
-        handleControls.visibility = if (handle == null) View.GONE else View.VISIBLE
         handleView.handleEnabled = on
         galleryImage.showHandle = on
         profileView.showHandle = on
-        if (handle == null) {
-            handleSideText.text = if (on) "on · none found yet" else "off"
-            noHandleTitle.text = if (on) "no handle found" else "handle detection is off"
-            noHandleText.text = if (on)
-                "the body is modelled on its own. photograph the vessel side-on so the handle " +
-                    "sticks out to the left or right, then tap it in 01 outline."
-            else "switch it on for mugs and cups. bowls, vases and jars are modelled from the body alone."
-            return
-        }
-        handleSideText.text = "traced on the ${handle.side.name.lowercase()} · " +
-            if (handle.hasEye) "open handle" else "solid lug"
-        sectionButtons.forEach { (section, button) ->
-            button.isSelected = section == handleOptions.section
-            button.setTextColor(getColor(if (button.isSelected) R.color.key else R.color.graphite_soft))
-            button.compoundDrawableTintList = button.textColors
-        }
-        handleWidthFader.isEnabled = handleOptions.section != HandleSection.ROUND
-        handleWidthFader.setLabel(if (handleOptions.section == HandleSection.ROUND)
-            "width · same as thickness for round" else "width front to back · assumed")
+        handleStep.render(profile?.handle, handleOptions, viewDegrees)
     }
 
     // Measurements
@@ -679,7 +661,7 @@ class MainActivity : ComponentActivity() {
         heightInput.text.toString().replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 && it <= 500.0 }
 
     private fun updateMeasurements() {
-        val shape = profile
+        val shape = corrected
         claySettingsText.text = VesselReadout.settingsSummary(wallMm, baseMm, allowancePercent)
         if (shape == null) {
             showMeasurements(null)
@@ -743,7 +725,7 @@ class MainActivity : ComponentActivity() {
         val traced = profile ?: return
         val saved = vesselStore.find(currentSavedId)
         SaveVesselDialog(this, vesselStore.folders(), saved, vesselName,
-            VesselCategory.suggest(traced, handleOptions.enabled),
+            VesselCategory.suggest(corrected ?: traced, handleOptions.enabled),
             numberedName = { category ->
                 category.defaultName(vesselStore.recent(Int.MAX_VALUE).count { it.category == category })
             },
@@ -758,7 +740,7 @@ class MainActivity : ComponentActivity() {
         ) { name, category, folder ->
             try {
                 val entry = vesselStore.save(currentSavedId, folder.id, name, bitmap, traced,
-                    enteredHeight(), wallMm, allowancePercent, baseMm, handleOptions, category)
+                    enteredHeight(), wallMm, allowancePercent, baseMm, handleOptions, category, viewDegrees)
                 currentSavedId = entry.id
                 vesselName = entry.name
                 titleText.text = entry.name
@@ -781,6 +763,7 @@ class MainActivity : ComponentActivity() {
         currentSavedId = entry.id
         vesselName = entry.name
         handleOptions = entry.handleOptions
+        viewDegrees = entry.viewDegrees
         photo = bitmap
         galleryImage.bitmap = bitmap
         heightInput.setText(entry.heightCm?.toString() ?: "")
@@ -794,7 +777,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         camera.release()
         worker.shutdownNow()
-        interactiveSegmenter?.close()
+        segmenter.close()
         super.onDestroy()
     }
 }

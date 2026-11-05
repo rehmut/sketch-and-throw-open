@@ -16,8 +16,6 @@ import kotlin.math.sign
 internal object HandleMeshBuilder {
     /** Exponent giving a pulled strap its softened-rectangle section. */
     private const val STRAP_ROUNDNESS = 0.35
-    /** How far each end is pushed into the body wall, as a fraction of thickness. */
-    private const val JOIN_INSET = 0.35f
     private const val MIN_SAMPLES = 12
     private const val MAX_SAMPLES = 48
     private const val SMOOTHING_PASSES = 8
@@ -36,7 +34,11 @@ internal object HandleMeshBuilder {
         /** Model units per image pixel. */
         val scale: Float,
         /** Model units per millimetre, when the height is known. */
-        val unitsPerMm: Float?
+        val unitsPerMm: Float?,
+        /** Outer radius of the modelled body at a model height. */
+        val bodyRadius: (Float) -> Float,
+        /** Modelled wall thickness, in model units. */
+        val wall: Float
     )
 
     fun append(
@@ -47,15 +49,9 @@ internal object HandleMeshBuilder {
         placement: Placement,
         segments: Int = 12
     ) {
-        // Extend first, then smooth: the turn into the wall is rounded off with the
-        // rest instead of leaving a corner that pinches the tube.
-        val path = smoothPath(extendIntoBody(handle))
-        if (path.size < 2) return
-        val centers = path.map { point ->
-            Pair((point.x - placement.axisX) * placement.scale,
-                placement.topY - (point.y - placement.top) * placement.scale)
-        }
-        val rings = path.indices.map { index ->
+        val (centers, thicknesses) = anchored(smoothPath(handle.path), handle.side, placement)
+        if (centers.size < 2) return
+        val rings = centers.indices.map { index ->
             val before = centers[max(0, index - 1)]
             val after = centers[minOf(centers.lastIndex, index + 1)]
             val tx = after.first - before.first
@@ -64,7 +60,7 @@ internal object HandleMeshBuilder {
             // In-plane normal: across the handle within the photo plane.
             val nx = -ty / length
             val ny = tx / length
-            val thickness = path[index].thickness * placement.scale
+            val thickness = thicknesses[index]
             val depth = depthOf(thickness, options, placement)
             val start = vertices.size
             for (step in 0 until segments) {
@@ -153,13 +149,33 @@ internal object HandleMeshBuilder {
         }
     }
 
-    /** Pushes both ends toward the axis so the tube meets the wall without a gap. */
-    private fun extendIntoBody(handle: VesselHandle): List<HandlePoint> {
-        val inward = if (handle.side == HandleSide.RIGHT) -1f else 1f
-        val first = handle.path.first()
-        val last = handle.path.last()
-        return listOf(first.copy(x = first.x + inward * first.thickness * JOIN_INSET)) +
-            handle.path + last.copy(x = last.x + inward * last.thickness * JOIN_INSET)
+    /**
+     * The handle in model space, attached to the modelled wall. The traced ends
+     * come from the photo's outline, which the model has made symmetric and
+     * levelled, so they can sit over the body (and pierce the opening) or stop
+     * short of it (and float). Ends inside the body are dropped, and each end is
+     * anchored halfway into the wall at its own height.
+     */
+    private fun anchored(
+        path: List<HandlePoint>, side: HandleSide, placement: Placement
+    ): Pair<List<Pair<Float, Float>>, List<Float>> {
+        val sign = if (side == HandleSide.RIGHT) 1f else -1f
+        val points = path.map { point ->
+            Triple((point.x - placement.axisX) * placement.scale,
+                placement.topY - (point.y - placement.top) * placement.scale,
+                point.thickness * placement.scale)
+        }
+        fun outside(p: Triple<Float, Float, Float>) = sign * p.first > placement.bodyRadius(p.second)
+        val first = points.indexOfFirst(::outside)
+        val last = points.indexOfLast(::outside)
+        if (first < 0 || last - first < 1) return Pair(emptyList(), emptyList())
+        val kept = points.subList(first, last + 1)
+        fun anchor(p: Triple<Float, Float, Float>): Triple<Float, Float, Float> {
+            val inset = minOf(placement.wall, p.third) / 2f
+            return Triple(sign * (placement.bodyRadius(p.second) - inset), p.second, p.third)
+        }
+        val all = listOf(anchor(kept.first())) + kept + anchor(kept.last())
+        return Pair(all.map { Pair(it.first, it.second) }, all.map { it.third })
     }
 
     private fun depthOf(thickness: Float, options: HandleOptions, placement: Placement): Float {

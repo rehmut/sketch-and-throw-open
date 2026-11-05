@@ -61,6 +61,16 @@ object VesselProfileExtractor {
         sensitivity: Int = 50,
         detectHandles: Boolean = true
     ): VesselProfile? {
+        val mask = colourMask(bitmap, sensitivity) ?: return null
+        return extractFromMask(bitmap.width, bitmap.height, mask, focus?.toMaskBox(), seed?.toMaskPoint(),
+            mirrorMissingSide = true, detectHandles = detectHandles)
+    }
+
+    /**
+     * Pixels that differ in colour from the background sampled at the photo's
+     * edges, or null for a photo too small to judge.
+     */
+    fun colourMask(bitmap: Bitmap, sensitivity: Int = 50): BooleanArray? {
         val w = bitmap.width
         val h = bitmap.height
         if (w < 32 || h < 32) return null
@@ -80,9 +90,7 @@ object VesselProfileExtractor {
         val cutoff = (auto * (1.55f - sensitivity.coerceIn(0, 100) / 100f))
             .roundToInt().coerceIn(12, 125)
 
-        val mask = BooleanArray(pixels.size) { distances[it] >= cutoff }
-        return extractFromMask(w, h, mask, focus?.toMaskBox(), seed?.toMaskPoint(),
-            mirrorMissingSide = true, detectHandles = detectHandles)
+        return BooleanArray(pixels.size) { distances[it] >= cutoff }
     }
 
     fun extractFromConfidence(
@@ -92,7 +100,18 @@ object VesselProfileExtractor {
         focus: Rect? = null,
         seed: PointF? = null,
         sensitivity: Int = 50,
-        detectHandles: Boolean = true
+        detectHandles: Boolean = true,
+        /**
+         * A second segmentation pointed at the handle. It only helps find the
+         * handle; the body outline always comes from [confidence] alone.
+         */
+        handleConfidence: FloatArray? = null,
+        /**
+         * Pixels not coloured like the background. With it, the handle pass is
+         * trusted at the loose threshold wherever the colour agrees; without it,
+         * only at the normal threshold.
+         */
+        handleColourMask: BooleanArray? = null
     ): VesselProfile? {
         if (width < 32 || height < 32 || confidence.size != width * height) return null
         val threshold = 0.8f - sensitivity.coerceIn(0, 100) * 0.006f
@@ -100,7 +119,17 @@ object VesselProfileExtractor {
         // A handle is thin and far from the tap point, so the model is less sure of
         // it than of the body. A looser mask may extend the body into a handle.
         val handleThreshold = threshold * HANDLE_CONFIDENCE_FACTOR
-        val handleMask = BooleanArray(confidence.size) { confidence[it] >= handleThreshold }
+        // The handle pass is often as unsure of a thin handle as of the eye between
+        // handle and body. At the loose threshold it would fill the eye, at the
+        // normal one lose the handle; colour tells them apart, since the eye shows
+        // the background. Without colour, only the normal threshold is safe.
+        val handlePass = handleConfidence?.takeIf { it.size == confidence.size }
+        val colour = handleColourMask?.takeIf { it.size == confidence.size }
+        val handleMask = BooleanArray(confidence.size) {
+            confidence[it] >= handleThreshold || (handlePass != null && (
+                if (colour != null) handlePass[it] >= handleThreshold && colour[it]
+                else handlePass[it] >= threshold))
+        }
         return extractFromMask(width, height, mask, focus?.toMaskBox(), seed?.toMaskPoint(),
             mirrorMissingSide = false, handleMask = handleMask, detectHandles = detectHandles)
     }

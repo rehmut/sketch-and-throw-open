@@ -21,7 +21,9 @@ data class SavedVessel(
     val profile: VesselProfile,
     val baseMm: Double = wallMm,
     val handleOptions: HandleOptions = HandleOptions(),
-    val category: VesselCategory = VesselCategory.suggest(profile, handleOptions.enabled)
+    val category: VesselCategory = VesselCategory.suggest(profile, handleOptions.enabled),
+    /** Camera elevation the photo was taken from, corrected for by [ViewCorrection]. */
+    val viewDegrees: Int = 0
 )
 
 class VesselStore(context: Context) {
@@ -70,7 +72,7 @@ class VesselStore(context: Context) {
         existingId: String?, folderId: String, name: String, bitmap: Bitmap,
         profile: VesselProfile, heightCm: Double?, wallMm: Double,
         allowancePercent: Double, baseMm: Double, handleOptions: HandleOptions,
-        category: VesselCategory
+        category: VesselCategory, viewDegrees: Int
     ): SavedVessel {
         require(folders.any { it.id == folderId })
         val clean = name.trim()
@@ -88,7 +90,7 @@ class VesselStore(context: Context) {
             throw error
         }
         val entry = SavedVessel(id, folderId, clean, old?.createdAt ?: System.currentTimeMillis(),
-            heightCm, wallMm, allowancePercent, profile, baseMm, handleOptions, category)
+            heightCm, wallMm, allowancePercent, profile, baseMm, handleOptions, category, viewDegrees)
         vessels.removeAll { it.id == id }
         vessels.add(entry)
         persist()
@@ -141,7 +143,8 @@ class VesselStore(context: Context) {
                     // Vessels saved before base, handle and category existed.
                     item.optDouble("baseMm", wallMm), handleOptions,
                     VesselCategory.fromName(item.optString("category"))
-                        ?: VesselCategory.suggest(profile, handleOptions.enabled)))
+                        ?: VesselCategory.suggest(profile, handleOptions.enabled),
+                    item.optInt("viewDegrees", 0).coerceIn(0, ViewCorrection.MAX_DEGREES)))
             }
         } catch (error: Exception) {
             // Keep a damaged index on disk for recovery and present an empty library.
@@ -214,6 +217,7 @@ class VesselStore(context: Context) {
                     .put("imageHeight", entry.profile.imageHeight).put("rows", rows)
                     .put("baseMm", entry.baseMm)
                     .put("category", entry.category.name)
+                    .put("viewDegrees", entry.viewDegrees)
                     .put("handleOptions", writeHandleOptions(entry.handleOptions))
                     .put("handle", entry.profile.handle?.let(::writeHandle) ?: JSONObject.NULL))
             }

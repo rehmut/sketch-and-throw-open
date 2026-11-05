@@ -155,7 +155,7 @@
                 android:orientation="horizontal" android:padding="3dp">
                 <Button android:id="@+id/stepOutline" style="@style/RockerItem" android:text="01 outline" />
                 <Button android:id="@+id/stepHandle" style="@style/RockerItem"
-                    android:layout_marginLeft="3dp" android:text="02 handle" />
+                    android:layout_marginLeft="3dp" android:text="02 adjust" />
                 <Button android:id="@+id/stepMeasure" style="@style/RockerItem"
                     android:layout_marginLeft="3dp" android:text="03 measure" />
                 <Button android:id="@+id/step3d" style="@style/RockerItem"
@@ -241,7 +241,7 @@
                     </LinearLayout>
                 </ScrollView>
 
-                <!-- 02 handle -->
+                <!-- 02 adjust: camera angle and handle -->
                 <ScrollView android:id="@+id/handlePanel" android:layout_width="match_parent"
                     android:layout_height="match_parent" android:visibility="gone">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -252,6 +252,19 @@
                                 android:layout_width="match_parent" android:layout_height="match_parent"
                                 android:background="@drawable/bg_panel" />
                         </FrameLayout>
+                        <io.github.rehmut.sketchandthrow.FaderControl android:id="@+id/viewAngleFader"
+                            android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/gap_large"
+                            app:faderLabel="camera angle · how far above the pot"
+                            app:faderMin="0" app:faderMax="45" app:faderStep="1" app:faderValue="0"
+                            app:faderLowLabel="level" app:faderHighLabel="from above" />
+                        <TextView style="@style/Label" android:layout_width="match_parent"
+                            android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                            android:lineSpacingMultiplier="1.3"
+                            android:text="slide until the rim in the drawing sits flat. sizes, clay and 3D follow." />
+                        <View android:layout_width="match_parent" android:layout_height="1dp"
+                            android:layout_marginTop="@dimen/gutter" android:background="@color/graphite_soft"
+                            android:alpha="0.25" />
                         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                             android:layout_marginTop="@dimen/gap_large" android:orientation="horizontal"
                             android:gravity="center_vertical">
