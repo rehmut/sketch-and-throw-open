@@ -39,4 +39,4 @@ The project targets API 36, meeting the September 2026 target API requirement fo
 
 ## Licence
 
-Copyright (C) 2026 Ferdinand Kirchner. Sketch & Throw is free software under the [GNU General Public License v3.0](LICENSE). The bundled MediaPipe model and the MediaPipe library are under the Apache License 2.0 (`app/src/main/assets/licenses/apache-2.0.txt`). Google ML Kit is a separate component under [Google's terms](https://developers.google.com/ml-kit/terms) and is not covered by this licence.
+Copyright (C) 2026 Ferdinand Kirchner. Sketch & Throw is licensed under the [Apache License 2.0](LICENSE). The bundled MediaPipe model and the MediaPipe library are also under the Apache License 2.0. Google ML Kit is a separate component under [Google's terms](https://developers.google.com/ml-kit/terms) and is not covered by this licence.
