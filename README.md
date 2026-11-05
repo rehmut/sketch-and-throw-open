@@ -8,7 +8,7 @@ The app requests camera permission for live view. Android's Photo Picker grants 
 
 The standard ML Kit object detector locates and tracks general objects, but returns boxes rather than exact edges. For gallery photos, the bundled MediaPipe MagicTouch model produces a pixel mask around a point inside the vessel. The app initially uses the centre of the detected object or image; tap **inside the vessel** to guide it when the wrong object is selected. The sensitivity slider changes the confidence threshold of the mask. Switch off **ML outline** to compare the earlier colour-based outline. Neither method is specifically trained to identify pottery; complex scenes, occlusion, and reflective surfaces can still give an inaccurate profile. The 2D and 3D results work best for one upright vessel photographed straight-on.
 
-A photo opens in four steps: **01 outline**, **02 handle**, **03 measure** and **04 3d**.
+A photo opens in four steps: **01 outline**, **02 adjust**, **03 measure** and **04 3d**.
 
 ### Handles
 
@@ -36,3 +36,7 @@ The command-line build is `./gradlew assembleDebug` (`.\gradlew.bat assembleDebu
 ## Google Play path
 
 The project targets API 36, meeting the September 2026 target API requirement for new phone apps. The application ID is `io.github.rehmut.sketchandthrow` and is permanent once published. Test on real devices and use Android Studio's **Build > Generate Signed Bundle / APK** to create a signed Android App Bundle. A Play Console account and store listing are required. Review Play's data safety and camera permission declarations for the final feature set.
+
+## Licence
+
+Copyright (C) 2026 Ferdinand Kirchner. Sketch & Throw is free software under the [GNU General Public License v3.0](LICENSE). The bundled MediaPipe model and the MediaPipe library are under the Apache License 2.0 (`app/src/main/assets/licenses/apache-2.0.txt`). Google ML Kit is a separate component under [Google's terms](https://developers.google.com/ml-kit/terms) and is not covered by this licence.
